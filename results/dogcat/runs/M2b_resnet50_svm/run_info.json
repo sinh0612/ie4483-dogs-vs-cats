@@ -1,0 +1,22 @@
+{
+  "features": "resnet50",
+  "backbone_weights": "torchvision IMAGENET1K_V2",
+  "seed": 42,
+  "n_train": 19981,
+  "n_val": 5000,
+  "input_size": "3x224x224",
+  "feature_dim": 2048,
+  "backbone_params": 23508032,
+  "extract_seconds": 31.7,
+  "preprocessing": "StandardScaler fitted on train features",
+  "model": "resnet50 frozen + svm",
+  "method": "sklearn LinearSVC (squared hinge, L2), C chosen on val; prob = sigmoid(decision score)",
+  "C": 0.0001,
+  "params_trainable": 2049,
+  "epochs": null,
+  "lr": null,
+  "best_val_acc": 0.9952,
+  "train_acc_at_best": 0.9985,
+  "train_seconds": 31.0,
+  "final_fit_seconds": 3.4
+}

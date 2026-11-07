@@ -1,0 +1,23 @@
+{
+  "model": "clip_vitl14 zero-shot",
+  "prompts": [
+    "a photo of a cat.",
+    "a photo of a dog."
+  ],
+  "logit_scale": 100.0,
+  "seed": 42,
+  "params_trainable": 0,
+  "n_train": 0,
+  "n_val": 5000,
+  "input_size": "3x224x224",
+  "epochs": 0,
+  "lr": null,
+  "best_val_acc": 0.9984,
+  "train_acc_at_best": null,
+  "train_seconds": 0.0,
+  "weights": "open_clip ViT-L-14 pretrained=openai",
+  "feature_dim": 768,
+  "params_total": 427616513,
+  "extract_seconds": 208.6,
+  "extract_seconds_note": "taken from logs/dc_features.log (first run); the later rerun only loaded cached features"
+}

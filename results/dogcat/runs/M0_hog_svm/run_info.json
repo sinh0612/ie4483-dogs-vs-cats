@@ -1,0 +1,32 @@
+{
+  "model": "HOG + LinearSVC",
+  "hog": {
+    "orientations": 9,
+    "pixels_per_cell": [
+      8,
+      8
+    ],
+    "cells_per_block": [
+      2,
+      2
+    ],
+    "block_norm": "L2-Hys",
+    "image": "grayscale 128x128 (resize short side + center crop)"
+  },
+  "feature_dim": 8100,
+  "C": 3e-06,
+  "seed": 42,
+  "n_train": 19981,
+  "n_val": 5000,
+  "input_size": "1x128x128",
+  "params_total": 8101,
+  "params_trainable": 8101,
+  "epochs": null,
+  "lr": null,
+  "best_val_acc": 0.7344,
+  "train_acc_at_best": 0.75682,
+  "feature_seconds": 26.3,
+  "train_seconds": 113.1,
+  "final_fit_seconds": 12.9,
+  "note": "prob = sigmoid(SVM decision score), not calibrated"
+}
