@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.nn.functional as F
 from torchvision import models
 
 
@@ -33,9 +34,36 @@ class SimpleCNN(nn.Module):
         return self.fc(self.dropout(x))
 
 
-def build_model(name, num_classes=2, pretrained=True):
+class ResizeInput(nn.Module):
+    # upsample small images (e.g. CIFAR 32x32) on the GPU before an ImageNet backbone
+    def __init__(self, model, size):
+        super().__init__()
+        self.size = size
+        self.model = model
+
+    def forward(self, x):
+        x = F.interpolate(x, size=(self.size, self.size), mode="bilinear", align_corners=False)
+        return self.model(x)
+
+
+def resnet18_cifar(num_classes=10):
+    # 32x32 input: 3x3 stride-1 stem and no maxpool, so layer4 still sees 4x4 maps
+    m = models.resnet18(weights=None, num_classes=num_classes)
+    m.conv1 = nn.Conv2d(3, 64, 3, stride=1, padding=1, bias=False)
+    m.maxpool = nn.Identity()
+    return m
+
+
+def build_model(name, num_classes=2, pretrained=True, resize_to=None):
+    m = _build(name, num_classes, pretrained)
+    return ResizeInput(m, resize_to) if resize_to else m
+
+
+def _build(name, num_classes, pretrained):
     if name == "simplecnn":
         return SimpleCNN(num_classes=num_classes)
+    if name == "resnet18_cifar":
+        return resnet18_cifar(num_classes)
     if name == "resnet50":
         m = models.resnet50(weights="IMAGENET1K_V2" if pretrained else None)
         m.fc = nn.Linear(m.fc.in_features, num_classes)

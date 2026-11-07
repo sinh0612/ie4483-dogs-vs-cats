@@ -61,13 +61,13 @@ def main():
     if ckpt:
         model.load_state_dict(torch.load(ckpt, map_location=device, weights_only=True))
         p, y, _ = predict(model, val_loader, device)
-        p_tta, _, _ = predict(model, val_loader, device, tta=True)
+        p, p_tta = p[:, 1], predict(model, val_loader, device, tta=True)[0][:, 1]
         write_csv(os.path.join(run_dir, "val_preds.csv"),
                   [dict(path=it[0], label=int(l), prob_dog=round(float(a), 6), prob_dog_tta=round(float(b), 6))
                    for it, l, a, b in zip(val_items, y, p, p_tta)])
         test_loader = make_loader(test_items, eval_tf, 128, shuffle=False, num_workers=4)
         p, ids, _ = predict(model, test_loader, device, with_loss=False)
-        p_tta, _, _ = predict(model, test_loader, device, tta=True, with_loss=False)
+        p, p_tta = p[:, 1], predict(model, test_loader, device, tta=True, with_loss=False)[0][:, 1]
         write_csv(os.path.join(run_dir, "test_preds.csv"),
                   [dict(id=int(i), prob_dog=round(float(a), 6), prob_dog_tta=round(float(b), 6))
                    for i, a, b in zip(ids, p, p_tta)])

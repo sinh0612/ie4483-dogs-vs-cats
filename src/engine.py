@@ -40,8 +40,8 @@ def train_one_epoch(model, loader, optimizer, scheduler, scaler, criterion, devi
 
 @torch.no_grad()
 def predict(model, loader, device, tta=False, with_loss=True):
-    """Returns (dog probabilities, labels, mean cross-entropy loss). tta = average with horizontal flip.
-    For the test set the "labels" are image ids, so pass with_loss=False."""
+    """Returns (class probabilities N x C, labels, mean cross-entropy loss). tta = average with horizontal flip.
+    For the dogs vs cats test set the "labels" are image ids, so pass with_loss=False."""
     model.eval()
     probs, labels, losses = [], [], []
     ce = nn.CrossEntropyLoss(reduction="sum")
@@ -52,7 +52,7 @@ def predict(model, loader, device, tta=False, with_loss=True):
             p = logits.softmax(1)
             if tta:
                 p = (p + model(torch.flip(x, dims=[3])).float().softmax(1)) / 2
-        probs.append(p[:, 1].cpu())
+        probs.append(p.cpu())
         labels.append(y)
         if with_loss:
             losses.append(ce(torch.log(p.clamp_min(1e-7)), y.to(device)).item())
@@ -61,9 +61,12 @@ def predict(model, loader, device, tta=False, with_loss=True):
 
 
 def fit(model, train_loader, val_loader, epochs, lr, weight_decay, device, run_dir,
-        label_smoothing=0.1, warmup_epochs=1, ckpt_path=None):
+        label_smoothing=0.1, warmup_epochs=1, ckpt_path=None, optimizer="adamw"):
     criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
+    if optimizer == "sgd":
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9, nesterov=True, weight_decay=weight_decay)
+    else:
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     steps = len(train_loader)
     scheduler = warmup_cosine(optimizer, warmup_epochs * steps, epochs * steps)
     scaler = torch.amp.GradScaler("cuda")
@@ -74,7 +77,7 @@ def fit(model, train_loader, val_loader, epochs, lr, weight_decay, device, run_d
         train_loss, train_acc = train_one_epoch(model, train_loader, optimizer, scheduler, scaler, criterion, device)
         lr_now = optimizer.param_groups[0]["lr"]  # lr at end of epoch
         probs, labels, val_loss = predict(model, val_loader, device)
-        val_acc = float(((probs > 0.5) == labels).mean())
+        val_acc = float((probs.argmax(1) == labels).mean())
         row = dict(epoch=epoch, lr=lr_now, train_loss=round(train_loss, 5), train_acc=round(train_acc, 5),
                    val_loss=round(val_loss, 5), val_acc=round(val_acc, 5), seconds=round(time.time() - t0, 1))
         history.append(row)

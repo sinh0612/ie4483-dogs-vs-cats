@@ -10,6 +10,8 @@ DATA_ROOT = os.path.join(PROJECT_ROOT, "data", "dataset")
 CACHE_ROOT = os.path.join(PROJECT_ROOT, "data", "cache256")
 FEATURE_DIR = os.path.join(PROJECT_ROOT, "data", "features")
 DOGCAT_RESULTS = os.path.join(PROJECT_ROOT, "results", "dogcat")
+CIFAR_ROOT = os.path.join(PROJECT_ROOT, "data", "cifar10")
+CIFAR_RESULTS = os.path.join(PROJECT_ROOT, "results", "cifar")
 SPLIT_DIRS = ["train/cat", "train/dog", "val/cat", "val/dog", "test"]
 IMG_EXTS = (".jpg", ".jpeg", ".png")
 
