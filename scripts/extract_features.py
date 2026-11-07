@@ -61,6 +61,10 @@ def main():
 
     splits = {s: get_items(s) for s in ["train", "val", "test"]}
     for split, items in splits.items():
+        if os.path.exists(os.path.join(FEATURE_DIR, f"{args.backbone}_{split}.npy")) and \
+                (split == "train" or os.path.exists(os.path.join(FEATURE_DIR, f"{args.backbone}_{split}_flip.npy"))):
+            print(f"{split}: features already there, skipping")
+            continue
         loader = make_loader(items, transform, args.batch_size, shuffle=False, num_workers=args.workers)
         f = extract(encode, loader)
         np.save(os.path.join(FEATURE_DIR, f"{args.backbone}_{split}.npy"), f)
@@ -97,7 +101,7 @@ def main():
         print(f"zero-shot val acc: {acc:.4f}")
         with open(os.path.join(run_dir, "run_info.json"), "w") as f:
             json.dump(dict(model=f"{args.backbone} zero-shot", prompts=PROMPTS, logit_scale=scale, seed=42,
-                           params_total=total, params_trainable=0, n_train=0, n_val=len(val_labels),
+                           params_trainable=0, n_train=0, n_val=len(val_labels),
                            input_size="3x224x224", epochs=0, lr=None, best_val_acc=round(acc, 5),
                            train_acc_at_best=None, train_seconds=0.0, **info), f, indent=2)
 
