@@ -78,3 +78,21 @@ Checkpoints go to `checkpoints/` and features to `data/features/` (both not in g
 
 The final config was picked on val, so its val accuracy is slightly optimistic. It is not significantly better than CLIP + logistic regression (McNemar p = 0.69).
 Details: `results/dogcat/summary.md`. Predictions: `submission.csv`.
+
+## How to run (CIFAR-10, part g)
+
+```bash
+python scripts/prepare_cifar.py                            # download to data/cifar10, 45k/5k split, dataset_info.md
+CUDA_VISIBLE_DEVICES=1 bash scripts/run_cifar.sh g1        # ResNet-18 from scratch: lr sweep, erasing / no-aug, 3 seeds (~40 min)
+CUDA_VISIBLE_DEVICES=2 bash scripts/run_cifar.sh g2sweep   # ConvNeXt-Tiny lr sweep on 15k images (~11 min)
+CUDA_VISIBLE_DEVICES=2 bash scripts/run_cifar.sh g2 42     # ConvNeXt-Tiny 8 epochs at 224 (~18 min per seed), also 43, 44
+python scripts/cifar_selection.py                          # val-only tables and G1 variant figure
+python scripts/eval_cifar.py --groups G1_resnet18_lr0.2_erase G2_convnext_tiny   # official test set, run once
+```
+
+| model (CIFAR-10, seeds 42/43/44) | val acc | test acc |
+|---|---|---|
+| ResNet-18 (CIFAR stem) from scratch, crop + flip + RandomErasing | 0.94560 ± 0.00250 | 0.9428 ± 0.0021 |
+| ConvNeXt-Tiny ImageNet-pretrained, 32 -> 224, fine-tuned | 0.98367 ± 0.00031 | 0.9819 ± 0.0015 |
+
+Details: `results/cifar/summary_g.md`.
