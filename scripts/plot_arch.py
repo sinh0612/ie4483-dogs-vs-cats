@@ -200,6 +200,11 @@ BUILDERS = {"simplecnn": simplecnn_boxes, "resnet50": resnet50_boxes, "convnext_
 MEMBER_ARCH = {"M3_resnet50_ft": "resnet50", "M4_convnext_tiny_ft": "convnext_tiny",
                "M5b_clip_vitl14_logreg": "clip_vitl14", "M5a_clip_vitl14_zeroshot": "clip_zeroshot",
                "M1_simplecnn": "simplecnn"}
+DISPLAY = {"M3_resnet50_ft": "ResNet-50", "M4_convnext_tiny_ft": "ConvNeXt-Tiny",
+           "M5b_clip_vitl14_logreg": "CLIP + log. regression", "M5a_clip_vitl14_zeroshot": "CLIP zero-shot",
+           "M1_simplecnn": "SimpleCNN"}
+FULL_NAME = {"M5a_clip_vitl14_zeroshot": "CLIP ViT-L/14 zero-shot",
+             "M5b_clip_vitl14_logreg": "CLIP ViT-L/14 + logistic regression"}
 
 
 def main():
@@ -208,7 +213,7 @@ def main():
     targets = sys.argv[1:] or ["simplecnn", "final"]
     if "simplecnn" in targets:
         boxes, colors = simplecnn_boxes()
-        save_diagram([("", boxes, colors)], "M1: SimpleCNN (from scratch), 1.57M parameters",
+        save_diagram([("", boxes, colors)], "SimpleCNN (from scratch), 1.57M parameters",
                      os.path.join(FIG, "fig_arch_simplecnn.png"))
     if "final" in targets:
         cfg = json.load(open(os.path.join(DOGCAT_RESULTS, "final_config.json")))
@@ -217,10 +222,10 @@ def main():
             boxes, colors = BUILDERS[MEMBER_ARCH[m]]()
             if cfg["tta"]:
                 boxes[0] = (boxes[0][0], "image + its\nhorizontal flip", boxes[0][2])
-            rows.append((m.split("_")[0], boxes, colors))
-        tta = " with flip TTA" if cfg["tta"] else ""
+            rows.append((DISPLAY[m], boxes, colors))
+        tta = ", with flip TTA" if cfg["tta"] else ""
         merge = ("Average", "mean of P(dog)\nlabel = P > 0.5", "dog=1 / cat=0") if len(rows) > 1 else None
-        save_diagram(rows, f"Final model: {' + '.join(cfg['members'])}{tta}", os.path.join(FIG, "fig_arch_final.png"), merge)
+        save_diagram(rows, f"Final model: {' + '.join(FULL_NAME.get(m, DISPLAY[m]) for m in cfg['members'])}{tta}", os.path.join(FIG, "fig_arch_final.png"), merge)
     for t in ("resnet50", "convnext_tiny", "clip_vitl14"):  # shape tables only
         if t in targets:
             BUILDERS[t]()

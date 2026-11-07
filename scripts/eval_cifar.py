@@ -23,6 +23,7 @@ from src.utils import CIFAR_RESULTS, PROJECT_ROOT, Timer, write_csv
 
 plt.rcParams.update({"font.size": 12, "axes.titlesize": 13, "axes.labelsize": 12})
 RUNS = os.path.join(CIFAR_RESULTS, "runs")
+DISPLAY = {"G1_resnet18_lr0.2_erase": "ResNet-18 from scratch", "G2_convnext_tiny": "ConvNeXt-Tiny pretrained"}
 
 
 def load_run(name):
@@ -61,18 +62,47 @@ def image_grid(images, titles, path, suptitle, ncols=8):
     plt.close(fig)
 
 
+def plot_confusion(main_preds, labels, S, seed, fig_dir):
+    # row-normalised confusion matrices
+    fig, axes = plt.subplots(1, len(main_preds), figsize=(8.5 * len(main_preds), 7.5), squeeze=False)
+    for ax, (g, (pred, _)) in zip(axes[0], main_preds.items()):
+        cm = confusion_matrix(labels, pred, labels=range(10), normalize="true")
+        ax.imshow(cm, cmap="Blues", vmin=0, vmax=1)
+        for i in range(10):
+            for j in range(10):
+                if cm[i, j] >= 0.005:
+                    ax.text(j, i, f"{cm[i, j]:.2f}", ha="center", va="center", fontsize=8,
+                            color="white" if cm[i, j] > 0.5 else "black")
+        ax.set_xticks(range(10), CIFAR_CLASSES, rotation=45, ha="right")
+        ax.set_yticks(range(10), CIFAR_CLASSES)
+        ax.set(xlabel="predicted", ylabel="true label",
+               title=f"{DISPLAY.get(g, g)}, seed {seed} ({S} acc {(pred == labels).mean():.4f})")
+    plt.tight_layout()
+    plt.savefig(os.path.join(fig_dir, f"fig_cifar_confusion_{S}.png"), dpi=200)
+    plt.close(fig)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--groups", nargs="+", required=True, help="run names without the _s<seed> suffix")
     parser.add_argument("--seeds", nargs="+", type=int, default=[42, 43, 44])
     parser.add_argument("--split", default="test", choices=["test", "val"])
     parser.add_argument("--out", default=CIFAR_RESULTS)
+    parser.add_argument("--replot", action="store_true", help="redraw the confusion figure from saved preds")
     args = parser.parse_args()
 
     timer = Timer()
     device = "cuda"
     fig_dir = os.path.join(args.out, "figures")
     os.makedirs(fig_dir, exist_ok=True)
+    if args.replot:
+        main_preds = {}
+        for g in args.groups:
+            d = pd.read_csv(os.path.join(args.out, "runs", f"{g}_s{args.seeds[0]}", f"{args.split}_preds.csv"))
+            main_preds[g] = (d.pred.values, None)
+        plot_confusion(main_preds, d.label.values, args.split, args.seeds[0], fig_dir)
+        print(f"Total time: {timer}")
+        return
     if args.split == "test":
         images, labels = load_cifar(False)
     else:
@@ -136,23 +166,7 @@ def main():
     print(pd.DataFrame(per_class).pivot(index="cls", columns="group", values="f1").to_string())
     print(pairs.groupby("group").head(5).to_string(index=False))
 
-    # row-normalised confusion matrices
-    fig, axes = plt.subplots(1, len(main_preds), figsize=(8.5 * len(main_preds), 7.5), squeeze=False)
-    for ax, (g, (pred, _)) in zip(axes[0], main_preds.items()):
-        cm = confusion_matrix(labels, pred, labels=range(10), normalize="true")
-        ax.imshow(cm, cmap="Blues", vmin=0, vmax=1)
-        for i in range(10):
-            for j in range(10):
-                if cm[i, j] >= 0.005:
-                    ax.text(j, i, f"{cm[i, j]:.2f}", ha="center", va="center", fontsize=8,
-                            color="white" if cm[i, j] > 0.5 else "black")
-        ax.set_xticks(range(10), names, rotation=45, ha="right")
-        ax.set_yticks(range(10), names)
-        ax.set(xlabel="predicted", ylabel="true label",
-               title=f"{g}_s{args.seeds[0]} ({S} acc {(pred == labels).mean():.4f})")
-    plt.tight_layout()
-    plt.savefig(os.path.join(fig_dir, f"fig_cifar_confusion_{S}.png"), dpi=200)
-    plt.close(fig)
+    plot_confusion(main_preds, labels, S, args.seeds[0], fig_dir)
 
     # most confident mistakes, and cat<->dog mistakes
     cat, dog = names.index("cat"), names.index("dog")
