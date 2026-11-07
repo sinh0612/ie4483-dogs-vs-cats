@@ -64,11 +64,3 @@ def write_csv(path, rows, fieldnames=None):
         w.writeheader()
         w.writerows(rows)
 
-
-def append_csv(path, row):
-    new = not os.path.exists(path)
-    with open(path, "a", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=list(row.keys()))
-        if new:
-            w.writeheader()
-        w.writerow(row)
