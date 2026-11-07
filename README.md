@@ -9,6 +9,9 @@ Mini project for IE4483 Artificial Intelligence and Data Mining at NTU (AY2026/2
 ![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.5-EE4C2C?logo=pytorch&logoColor=white)
 ![GPU](https://img.shields.io/badge/GPU-RTX%203090-76B900?logo=nvidia&logoColor=white)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sinh0612/ie4483-dogs-vs-cats/blob/main/notebooks/demo_clip_zeroshot.ipynb)
+
+The Colab badge opens the CLIP zero-shot demo notebook. It only works while the repo is public.
 
 <p align="center">
   <img src="docs/figures/dogcat_val_errors.png" width="88%" alt="Validation errors of every Dogs vs. Cats model">
@@ -24,8 +27,53 @@ Mini project for IE4483 Artificial Intelligence and Data Mining at NTU (AY2026/2
   common classes only 0.5.
 - Settings are chosen on the validation set only, and main models are run with 3 seeds.
 
+## Repository layout
+
+```
+.
+├── README.md                      # this file
+├── submission.csv                 # test predictions (1 = dog, 0 = cat)
+├── sampleSubmission.csv           # submission format from the course
+├── requirements.txt               # pip packages (torch is installed separately)
+├── notebooks/
+│   └── demo_clip_zeroshot.ipynb   # try the classifier on Colab, no weights needed
+├── src/                           # library code
+│   ├── utils.py                   # paths, seeding, timer, csv helpers
+│   ├── data.py                    # dataset, transforms, loaders
+│   ├── models.py                  # SimpleCNN, ResNet-50, ConvNeXt-Tiny, CIFAR ResNet-18
+│   ├── engine.py                  # training loop (AMP, warm-up + cosine), prediction with flip TTA
+│   ├── cifar.py                   # CIFAR-10 loading, 45k/5k split, imbalanced subset
+│   └── losses.py                  # class-balanced, inverse-frequency, logit-adjusted and focal losses
+├── scripts/                       # the commands you run
+│   ├── audit_data.py              # finds broken and duplicate images
+│   ├── cache_images.py            # resizes every image to short side 256
+│   ├── make_data_figures.py       # sample and augmentation figures
+│   ├── train_dogcat.py            # one Dogs vs. Cats training run
+│   ├── hog_svm.py                 # HOG + linear SVM baseline
+│   ├── extract_features.py        # frozen ResNet-50 / CLIP features, CLIP zero-shot
+│   ├── probe_features.py          # logistic regression, SVM and linear layer on frozen features
+│   ├── analyze_dogcat.py          # tables, McNemar tests, final model pick, submission.csv, figures
+│   ├── plot_arch.py               # architecture figures and layer shape tables
+│   ├── gradcam.py                 # Grad-CAM figures
+│   ├── hard_cases.py              # images the scratch CNN gets wrong and the final model gets right
+│   ├── prepare_cifar.py           # downloads CIFAR-10, makes the 45k/5k split
+│   ├── train_cifar.py             # one CIFAR-10 run (also the imbalanced runs)
+│   ├── cifar_selection.py         # CIFAR-10 validation tables for choosing settings
+│   ├── eval_cifar.py              # CIFAR-10 test evaluation, run once
+│   ├── cifar_per_class.py         # per-class F1 plot for CIFAR-10
+│   ├── eval_imbalance.py          # imbalanced CIFAR-10 tables and figures
+│   ├── make_readme_figures.py     # summary figures in docs/figures
+│   ├── config.sh                  # Python path used by the run_*.sh scripts
+│   └── run_dogcat.sh, run_cifar.sh, run_imbalance.sh   # experiment queues
+├── results/                       # tables, figures, per-run histories
+└── docs/figures/                  # figures used in this README
+```
+
+The dataset, model weights and logs are not in the repo because they are too large.
+
 ## Contents
 
+- [Repository layout](#repository-layout)
 - [The data](#the-data)
 - [The models](#the-models)
 - [How we picked the settings](#how-we-picked-the-settings)
@@ -131,6 +179,14 @@ So the model is very strong on clear photos of a single animal. Its weak spots a
 animals, a tiny or hidden animal, or no animal at all, and a two-class model has no way to say
 "neither" or "both".
 
+The pretrained models also fix many images that a CNN trained from scratch gets confidently wrong: a cat
+behind a wire fence, a small dog far away, a kitten sitting on a stuffed toy, a black cat in a dark photo.
+The small CNN leans on color and background, while the pretrained features find the animal itself.
+
+<p align="center">
+  <img src="results/dogcat/figures/fig_hard_cases.png" width="80%" alt="Hard validation images for the scratch CNN">
+</p>
+
 ## What actually moves the accuracy
 
 - **Pretraining is the big one.** Swapping the small CNN for a linear layer on frozen ResNet-50 features
@@ -171,6 +227,13 @@ Car versus truck comes second, mostly pickups and SUVs that sit between the two 
 
 <p align="center">
   <img src="results/cifar/figures/fig_cifar_confusion_test.png" width="80%" alt="CIFAR-10 test confusion matrices">
+</p>
+
+Per class, cat, dog and bird are the weakest for the ResNet-18 (F1 0.876, 0.904, 0.927, mean of 3 seeds),
+and that is also where pretraining helps most.
+
+<p align="center">
+  <img src="results/cifar/figures/fig_cifar_per_class.png" width="65%" alt="CIFAR-10 per-class F1">
 </p>
 
 ## CIFAR-10 with three rare classes
@@ -218,35 +281,6 @@ accuracy. Every method uses the same ResNet-18 recipe and 3 seeds.
   not with the ResNet-18 rows.
 
 ## Running the code
-
-<details>
-<summary><b>Repository layout</b></summary>
-
-```
-src/
-  utils.py            paths, seeding, timer, csv helpers
-  data.py             Dogs vs. Cats dataset, transforms, seeded DataLoader
-  models.py           SimpleCNN, ResNet-50, ConvNeXt-Tiny, CIFAR ResNet-18
-  engine.py           training loop (AMP, warm-up + cosine), prediction with flip TTA
-  cifar.py            CIFAR-10 loading, 45k/5k split, imbalanced subset
-  losses.py           class-balanced, inverse-frequency, logit-adjusted and focal losses
-scripts/
-  audit_data.py, cache_images.py, make_data_figures.py
-  train_dogcat.py, extract_features.py, probe_features.py, hog_svm.py
-  analyze_dogcat.py, plot_arch.py, gradcam.py
-  prepare_cifar.py, train_cifar.py, cifar_selection.py, eval_cifar.py, eval_imbalance.py
-  make_readme_figures.py
-  run_dogcat.sh, run_cifar.sh, run_imbalance.sh, config.sh
-results/
-  data_audit/         duplicate pairs, excluded train list
-  dogcat/             tables, McNemar tests, figures, per-run histories
-  cifar/              CIFAR-10 and imbalance tables, figures, per-run histories
-docs/figures/         figures used in this README
-submission.csv        test predictions (id, label; 1 = dog, 0 = cat)
-```
-
-The dataset, model weights and logs are not in the repo because they are too large.
-</details>
 
 <details>
 <summary><b>Setup and data</b></summary>
@@ -297,6 +331,7 @@ python scripts/gradcam.py --images test/374.jpg test/464.jpg test/47.jpg test/24
     --title "Grad-CAM on selected test images (class = predicted label, seed 42 checkpoints)"
 python scripts/gradcam.py --images val/dog/dog.12092.jpg val/cat/cat.7920.jpg val/dog/dog.8507.jpg \
     --out fig_gradcam_val_errors.png --title "Grad-CAM on misclassified validation images (class = predicted label)"
+python scripts/hard_cases.py
 
 # CIFAR-10
 python scripts/prepare_cifar.py
@@ -307,6 +342,7 @@ for s in 43 44; do python scripts/train_cifar.py --model resnet18_cifar --run-na
 python scripts/cifar_selection.py
 python scripts/eval_cifar.py --groups G1_resnet18_lr0.2_erase G2_convnext_tiny --split val
 python scripts/eval_cifar.py --groups G1_resnet18_lr0.2_erase G2_convnext_tiny     # official test set, once
+python scripts/cifar_per_class.py                          # per-class F1 from the saved test predictions
 
 # CIFAR-10 with rare classes
 for s in 42 43 44; do CUDA_VISIBLE_DEVICES=1 bash scripts/run_imbalance.sh g1 $s; done
