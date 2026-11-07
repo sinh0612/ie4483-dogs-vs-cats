@@ -1,0 +1,21 @@
+model,cls,f1_mean,f1_std
+ResNet-18 from scratch,airplane,0.9485,0.0023
+ResNet-18 from scratch,automobile,0.9714,0.0021
+ResNet-18 from scratch,bird,0.9273,0.0069
+ResNet-18 from scratch,cat,0.8762,0.0038
+ResNet-18 from scratch,deer,0.9485,0.0029
+ResNet-18 from scratch,dog,0.9044,0.008
+ResNet-18 from scratch,frog,0.9596,0.0004
+ResNet-18 from scratch,horse,0.9666,0.0025
+ResNet-18 from scratch,ship,0.9655,0.0008
+ResNet-18 from scratch,truck,0.9596,0.0007
+ConvNeXt-Tiny pretrained,airplane,0.9887,0.0035
+ConvNeXt-Tiny pretrained,automobile,0.9864,0.0019
+ConvNeXt-Tiny pretrained,bird,0.9811,0.0041
+ConvNeXt-Tiny pretrained,cat,0.9588,0.0042
+ConvNeXt-Tiny pretrained,deer,0.982,0.0026
+ConvNeXt-Tiny pretrained,dog,0.9657,0.0012
+ConvNeXt-Tiny pretrained,frog,0.9914,0.0013
+ConvNeXt-Tiny pretrained,horse,0.9905,0.0026
+ConvNeXt-Tiny pretrained,ship,0.9903,0.0006
+ConvNeXt-Tiny pretrained,truck,0.9842,0.0008

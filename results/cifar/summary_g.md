@@ -164,13 +164,14 @@ Recall equals the per-class accuracy.
 | rank | G1 (582 errors) | G2 (164 errors) |
 |---|---|---|
 | 1 | cat <-> dog: 123 (54 cat->dog, 69 dog->cat) | cat <-> dog: 55 (25 cat->dog, 30 dog->cat) |
-| 2 | automobile <-> truck: 45 | automobile <-> truck: 23 |
-| 3 | airplane <-> ship: 36 | bird <-> deer: 8 |
+| 2 | automobile <-> truck: 45 (26 automobile->truck, 19 truck->automobile) | automobile <-> truck: 23 (8 automobile->truck, 15 truck->automobile) |
+| 3 | airplane <-> ship: 36 (15 airplane->ship, 21 ship->airplane) | bird <-> deer: 8 (2 bird->deer, 6 deer->bird) |
 | 4 | bird <-> cat: 30 | airplane <-> ship: 7 |
 | 5 | cat <-> frog: 29 | bird <-> frog: 7 |
 
 ### Figures
 - `fig_cifar_confusion_test.png`: 10x10 confusion matrices, row-normalised.
+- `fig_cifar_per_class.png`: per-class test F1 of both models, mean of seeds 42/43/44 (`per_class_f1_seeds_test.csv`, `scripts/cifar_per_class.py`). Cat, dog and bird are the weakest classes for ResNet-18 (F1 0.876, 0.904, 0.927); ConvNeXt-Tiny closes most of the gap (0.959, 0.966, 0.981).
 - `fig_cifar_errors_<model>_test.png`: the 32 most confident mistakes of each model.
 - `fig_cifar_catdog_<model>_test.png`: cat <-> dog mistakes.
 - `fig_cifar_curves.png`: train/val loss and accuracy for all seeds.
