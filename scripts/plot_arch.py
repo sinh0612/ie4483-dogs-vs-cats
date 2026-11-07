@@ -188,10 +188,19 @@ def clip_boxes():
     return boxes, colors
 
 
+def clip_zeroshot_boxes():
+    boxes, colors = clip_boxes()
+    boxes = boxes[:5] + [("L2 normalise", "unit-length\nimage embedding", "768"),
+                         ("Cosine sim.", "with text emb. of\n'a photo of a cat/dog.'", "2"),
+                         ("x100, softmax", "CLIP logit scale\n(no training)", "P(dog)")]
+    return boxes, colors[:5] + [C_POOL, C_HEAD, C_HEAD]
+
+
 BUILDERS = {"simplecnn": simplecnn_boxes, "resnet50": resnet50_boxes, "convnext_tiny": convnext_boxes,
-            "clip_vitl14": clip_boxes}
+            "clip_vitl14": clip_boxes, "clip_zeroshot": clip_zeroshot_boxes}
 MEMBER_ARCH = {"M3_resnet50_ft": "resnet50", "M4_convnext_tiny_ft": "convnext_tiny",
-               "M5b_clip_vitl14_logreg": "clip_vitl14", "M1_simplecnn": "simplecnn"}
+               "M5b_clip_vitl14_logreg": "clip_vitl14", "M5a_clip_vitl14_zeroshot": "clip_zeroshot",
+               "M1_simplecnn": "simplecnn"}
 
 
 def main():

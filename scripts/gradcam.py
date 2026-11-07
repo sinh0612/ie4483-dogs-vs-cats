@@ -28,7 +28,8 @@ class GradCAM:
 
     def _save_act(self, module, inp, out):
         self.acts = out
-        out.register_hook(lambda g: setattr(self, "grads", g))
+        if out.requires_grad:  # skip during plain no_grad forward passes
+            out.register_hook(lambda g: setattr(self, "grads", g))
 
     def __call__(self, x, target):
         """Heatmap (HxW, 0..1) for class `target`, plus softmax probabilities."""

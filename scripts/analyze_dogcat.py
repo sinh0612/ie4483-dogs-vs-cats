@@ -109,6 +109,7 @@ def comparison_table(runs):
             params_trainable=info.get("params_trainable"),
             input_size=info.get("input_size"), epochs=info.get("epochs"), lr=info.get("lr"),
             C=info.get("C"), best_epoch=info.get("best_epoch"),
+            feature_seconds=info.get("extract_seconds", info.get("feature_seconds")),
             train_seconds_mean=round(np.mean([runs[g][s]["info"].get("train_seconds") or 0 for s in seeds]), 1),
             n_train=info.get("n_train"), seeds=" ".join(map(str, seeds)), n_seeds=len(seeds),
             val_acc_mean=round(float(np.mean(accs)), 5),
@@ -179,9 +180,15 @@ def main():
     members, col = final.members.split("+"), "prob_dog_tta" if final.tta else "prob_dog"
     p_val_final = np.mean([runs[g][42]["val"][col].values for g in members], axis=0)
     p_test_final = np.mean([runs[g][42]["test"][col].values for g in members], axis=0)
+    # is the final config really better than the best single model without TTA?
+    best_single = comp.sort_values("val_acc_s42", ascending=False).model.iloc[0]
+    n01, n10, p_mc = mcnemar(correct_vec(runs, best_single), (p_val_final > 0.5) == labels)
+    print(f"final vs {best_single}: final wins {n10}, single wins {n01}, McNemar p={p_mc:.4g}")
     with open(os.path.join(DOGCAT_RESULTS, "final_config.json"), "w") as f:
         json.dump(dict(members=members, seed=42, tta=bool(final.tta), val_acc=float(final.val_acc),
                        val_nll=float(final.val_nll), n_wrong=int(final.n_wrong),
+                       vs_best_single=dict(model=best_single, final_right_single_wrong=n10,
+                                           final_wrong_single_right=n01, mcnemar_p=float(f"{p_mc:.4g}")),
                        rule="max val acc, ties -> lower val NLL, then fewer models; candidates = top-3 models "
                             "with real probabilities, seed 42 runs"), f, indent=2)
 
@@ -257,14 +264,17 @@ def make_figures(runs, comp, labels, val_paths, p_val_final, final, tp):
         ax.invert_yaxis()
         ax.set_xlabel("validation accuracy (5000 images)")
         if zoom:
-            ax.set_xlim(d.ci95_low_s42.min() - 0.002, 1.0)
+            ax.set_xlim(d.ci95_low_s42.min() - 0.001, 1.0015)
             ax.set_title("Zoom: models above 97%")
         else:
             ax.set_xlim(0.5, 1.0)
             ax.set_title("All models")
-        for yi, (m, s) in enumerate(zip(d.val_acc_mean, d.val_acc_std)):
-            txt = f"{m:.4f}" + (f" ± {s:.4f}" if pd.notna(s) else "")
-            ax.text(ax.get_xlim()[0] + 0.002 * (1 if zoom else 10), yi, txt, va="center", fontsize=9, color="white")
+        for yi, (m, sd, hi) in enumerate(zip(d.val_acc_mean, d.val_acc_std, d.ci95_high_s42)):
+            txt = f"{m:.4f}" + (f" ± {sd:.4f}" if pd.notna(sd) else "")
+            if zoom:  # right of the CI so it does not cover the bars
+                ax.text(hi + 0.0002, yi, txt, va="center", fontsize=9)
+            else:
+                ax.text(0.52, yi, txt, va="center", fontsize=9, color="white")
         ax.grid(axis="x", alpha=0.3)
     fig.suptitle("Bars = mean val acc over seeds; black = 95% bootstrap CI (seed 42); red dots = each seed", fontsize=12)
     plt.tight_layout()
