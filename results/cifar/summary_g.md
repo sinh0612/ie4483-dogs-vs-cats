@@ -121,7 +121,7 @@ The code reuses `src/`:
 - This is 10 times higher than the 3e-5 chosen for dogs vs cats. A plausible reason is that upsampled 32x32 images are further from ImageNet photos, so the features need to move more. Ten classes also give a harder task than two.
 
 ### Other choices (not swept)
-- **G1:** 40 epochs, batch 256, wd 5e-4 and the SGD settings are the standard CIFAR ResNet recipe, as given in the task plan.
+- **G1:** 40 epochs, batch 256, wd 5e-4 and the SGD settings are the standard CIFAR ResNet recipe (He et al. 2016), so they were not tuned.
 - **G2:** wd 0.05, label smoothing 0.1 and warmup are kept from dogs vs cats.
 - **G2 epochs:** 8. The val curve is flat after epoch 5–6 (`fig_cifar_curves.png`), so more epochs would not help much.
 

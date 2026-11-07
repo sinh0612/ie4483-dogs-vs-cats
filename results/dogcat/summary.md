@@ -1,4 +1,4 @@
-# Dogs vs Cats: results summary (notes for the report)
+# Dogs vs Cats: results summary
 
 All numbers come from the files in `results/dogcat/` and were measured on 7 Nov 2026. Accuracy is on the
 5000-image validation set unless stated otherwise. Labels: cat = 0, dog = 1. Default seed is 42. M3 and M4
