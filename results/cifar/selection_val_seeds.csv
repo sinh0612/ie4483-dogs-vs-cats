@@ -1,0 +1,4 @@
+config,seeds,val_acc_mean,val_acc_std,train_minutes_mean
+G1_resnet18_lr0.2,42 43 44,0.9418,0.00069,5.0
+G1_resnet18_lr0.2_erase,42 43 44,0.9456,0.0025,5.3
+G2_convnext_tiny,42 43 44,0.98367,0.00031,19.7
