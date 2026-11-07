@@ -18,8 +18,8 @@ from src.data import get_items
 from src.engine import warmup_cosine
 from src.utils import DOGCAT_RESULTS, FEATURE_DIR, Timer, set_seed, write_csv
 
-LOGREG_C = [0.001, 0.01, 0.1, 1.0]
-SVM_C = [0.0001, 0.001, 0.01, 0.1]
+LOGREG_C = [0.0001, 0.0003, 0.001, 0.003, 0.01, 0.1, 1.0]
+SVM_C = [0.00001, 0.00003, 0.0001, 0.0003, 0.001, 0.01]
 
 
 def sigmoid(z):
@@ -148,8 +148,7 @@ def main():
                         final_fit_seconds=row["seconds"])
         else:
             hist, row, model = train_linear(X, y, Xv, yv, args.seed)
-            with torch.no_grad():
-                prob = lambda A: model(torch.tensor(A).cuda()).softmax(1)[:, 1].cpu().numpy()
+            prob = lambda A: model(torch.tensor(A).cuda()).softmax(1)[:, 1].detach().cpu().numpy()
             note = "nn.Linear trained with AdamW (lr 1e-3, wd 0.05), batch 256, 30 epochs, warmup+cosine, label smoothing 0.1; best epoch on val"
             info = dict(base, model=f"{args.features} frozen + linear layer (PyTorch)", method=note,
                         params_trainable=X.shape[1] * 2 + 2, epochs=30, lr=1e-3, best_epoch=row["epoch"],
