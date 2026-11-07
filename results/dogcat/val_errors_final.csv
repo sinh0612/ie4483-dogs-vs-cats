@@ -1,0 +1,6 @@
+path,label,prob_dog_final
+val/dog/dog.8507.jpg,1,0.2199
+val/cat/cat.9882.jpg,0,0.6377
+val/cat/cat.10539.jpg,0,0.6189
+val/cat/cat.7920.jpg,0,0.6142
+val/dog/dog.12092.jpg,1,0.4454

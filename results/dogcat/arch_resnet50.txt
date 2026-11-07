@@ -1,0 +1,35 @@
+ResNet-50 (ImageNet IMAGENET1K_V2), fc replaced by Linear(2048, 2), all layers fine-tuned
+
+input: 3x224x224   output: 2
+
+layer                                      type                         output shape       params
+--------------------------------------------------------------------------------------------------
+conv1                                      Conv2d                         64x112x112        9,408
+bn1                                        BatchNorm2d                    64x112x112          128
+relu                                       ReLU                           64x112x112            0
+maxpool                                    MaxPool2d                        64x56x56            0
+  layer1.0                                 Bottleneck                      256x56x56       75,008
+  layer1.1                                 Bottleneck                      256x56x56       70,400
+  layer1.2                                 Bottleneck                      256x56x56       70,400
+layer1                                     Sequential                      256x56x56      215,808
+  layer2.0                                 Bottleneck                      512x28x28      379,392
+  layer2.1                                 Bottleneck                      512x28x28      280,064
+  layer2.2                                 Bottleneck                      512x28x28      280,064
+  layer2.3                                 Bottleneck                      512x28x28      280,064
+layer2                                     Sequential                      512x28x28    1,219,584
+  layer3.0                                 Bottleneck                     1024x14x14    1,512,448
+  layer3.1                                 Bottleneck                     1024x14x14    1,117,184
+  layer3.2                                 Bottleneck                     1024x14x14    1,117,184
+  layer3.3                                 Bottleneck                     1024x14x14    1,117,184
+  layer3.4                                 Bottleneck                     1024x14x14    1,117,184
+  layer3.5                                 Bottleneck                     1024x14x14    1,117,184
+layer3                                     Sequential                     1024x14x14    7,098,368
+  layer4.0                                 Bottleneck                       2048x7x7    6,039,552
+  layer4.1                                 Bottleneck                       2048x7x7    4,462,592
+  layer4.2                                 Bottleneck                       2048x7x7    4,462,592
+layer4                                     Sequential                       2048x7x7   14,964,736
+avgpool                                    AdaptiveAvgPool2d                2048x1x1            0
+fc                                         Linear                                  2        4,098
+--------------------------------------------------------------------------------------------------
+total params: 23,512,130   trainable: 23,512,130
+loss: CrossEntropy with label smoothing 0.1

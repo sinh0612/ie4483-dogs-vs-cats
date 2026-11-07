@@ -1,0 +1,24 @@
+ConvNeXt-Tiny (ImageNet IMAGENET1K_V1), last Linear replaced by Linear(768, 2), all layers fine-tuned
+
+input: 3x224x224   output: 2
+
+layer                                      type                         output shape       params
+--------------------------------------------------------------------------------------------------
+  features.0                               Conv2dNormActivation             96x56x56        4,896
+  features.1                               Sequential                       96x56x56      237,888
+  features.2                               Sequential                      192x28x28       74,112
+  features.3                               Sequential                      192x28x28      918,144
+  features.4                               Sequential                      384x14x14      295,680
+  features.5                               Sequential                      384x14x14   10,817,280
+  features.6                               Sequential                        768x7x7    1,181,184
+  features.7                               Sequential                        768x7x7   14,289,408
+features                                   Sequential                        768x7x7   27,818,592
+avgpool                                    AdaptiveAvgPool2d                 768x1x1            0
+  classifier.0                             LayerNorm2d                       768x1x1        1,536
+  classifier.1                             Flatten                               768            0
+  classifier.2                             Linear                                  2        1,538
+classifier                                 Sequential                              2        3,074
+--------------------------------------------------------------------------------------------------
+total params: 27,821,666   trainable: 27,821,666
+ConvNeXt block: depthwise Conv7x7 -> LayerNorm -> Linear(4C) -> GELU -> Linear(C), residual
+loss: CrossEntropy with label smoothing 0.1

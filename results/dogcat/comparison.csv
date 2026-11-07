@@ -1,0 +1,12 @@
+model,description,params_total,params_trainable,input_size,epochs,lr,C,best_epoch,feature_seconds,train_seconds_mean,n_train,seeds,n_seeds,val_acc_mean,val_acc_std,val_acc_per_seed,val_acc_s42,ci95_low_s42,ci95_high_s42,n_wrong_s42,train_acc_s42,train_val_gap_s42
+M0_hog_svm,HOG (gray 128x128) + LinearSVC,8101,8101,1x128x128,,,3e-06,,26.3,113.1,19981,42,1,0.7344,,0.7344,0.7344,0.7222,0.7462,1328,0.75682,0.02242
+M1_simplecnn_noaug,"SimpleCNN from scratch, no augmentation",1570594,1570594,3x224x224,20.0,0.001,,19.0,,281.8,19981,42,1,0.944,,0.9440,0.944,0.9374,0.9504,280,0.99835,0.05435
+M1_simplecnn,SimpleCNN from scratch,1570594,1570594,3x224x224,20.0,0.001,,18.0,,283.5,19981,42,1,0.9522,,0.9522,0.9522,0.946,0.958,239,0.95346,0.00126
+M2b_resnet50_svm,ResNet-50 frozen features + LinearSVC,23508032,2049,3x224x224,,,0.0001,,31.7,31.0,19981,42,1,0.9952,,0.9952,0.9952,0.9932,0.997,24,0.9985,0.0033
+M2a_resnet50_logreg,ResNet-50 frozen features + LogisticRegression,23508032,2049,3x224x224,,,0.001,,31.7,13.9,19981,42,1,0.9956,,0.9956,0.9956,0.9938,0.9972,22,0.9981,0.0025
+M2c_resnet50_linear,ResNet-50 frozen features + linear layer (PyTorch),23508032,4098,3x224x224,30.0,0.001,,13.0,31.7,5.9,19981,42,1,0.9944,,0.9944,0.9944,0.9924,0.9962,28,0.9986,0.0042
+M3_resnet50_ft_noaug,"ResNet-50 full fine-tune, no augmentation",23512130,23512130,3x224x224,10.0,0.0001,,4.0,,448.2,19981,42,1,0.9948,,0.9948,0.9948,0.9928,0.9966,26,0.99925,0.00445
+M3_resnet50_ft,ResNet-50 full fine-tune,23512130,23512130,3x224x224,10.0,0.0001,,8.0,,450.8,19981,42 43 44,3,0.99453,0.00031,0.9946 0.9948 0.9942,0.9946,0.9924,0.9966,27,0.9994,0.0048
+M4_convnext_tiny_ft,ConvNeXt-Tiny full fine-tune,27821666,27821666,3x224x224,10.0,3e-05,,5.0,,628.9,19981,42 43 44,3,0.9964,0.00087,0.9968 0.9970 0.9954,0.9968,0.9952,0.9982,16,0.99885,0.00205
+M5a_clip_vitl14_zeroshot,CLIP ViT-L/14 zero-shot (no training),427616513,0,3x224x224,0.0,,,,208.6,0.0,0,42,1,0.9984,,0.9984,0.9984,0.9972,0.9994,8,,
+M5b_clip_vitl14_logreg,CLIP ViT-L/14 frozen features + LogisticRegression,427616513,769,3x224x224,,,0.0001,,208.6,5.3,19981,42,1,0.9986,,0.9986,0.9986,0.9974,0.9996,7,0.99835,-0.00025

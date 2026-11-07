@@ -1,0 +1,10 @@
+model,lr,val_acc,val_loss
+convnext_tiny,1e-05,0.9954,0.0633
+convnext_tiny,3e-05,0.9962,0.05691
+convnext_tiny,0.0001,0.9962,0.0571
+convnext_tiny,0.0003,0.9938,0.06216
+resnet50,1e-05,0.9912,0.08569
+resnet50,3e-05,0.994,0.07141
+resnet50,0.0001,0.9942,0.06066
+resnet50,0.0003,0.9908,0.0709
+resnet50,0.001,0.9844,0.08572

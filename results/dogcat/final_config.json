@@ -1,0 +1,18 @@
+{
+  "members": [
+    "M5a_clip_vitl14_zeroshot",
+    "M4_convnext_tiny_ft"
+  ],
+  "seed": 42,
+  "tta": true,
+  "val_acc": 0.999,
+  "val_nll": 0.0286,
+  "n_wrong": 5,
+  "vs_best_single": {
+    "model": "M5b_clip_vitl14_logreg",
+    "final_right_single_wrong": 4,
+    "final_wrong_single_right": 2,
+    "mcnemar_p": 0.6875
+  },
+  "rule": "max val acc, ties -> lower val NLL, then fewer models; candidates = top-3 models with real probabilities, seed 42 runs"
+}

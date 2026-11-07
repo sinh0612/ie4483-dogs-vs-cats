@@ -1,0 +1,21 @@
+comparison,model_a,model_b,acc_a_s42,acc_b_s42,delta_b_minus_a,a_right_b_wrong,a_wrong_b_right,p_value,significant_0_05
+hand-crafted HOG+SVM -> CNN learned from scratch,M0_hog_svm,M1_simplecnn,0.7344,0.9522,0.2178,119,1208,2.428e-227,True
+augmentation on (scratch CNN),M1_simplecnn_noaug,M1_simplecnn,0.944,0.9522,0.0082,92,133,0.007523,True
+scratch CNN -> frozen ImageNet ResNet-50 + linear layer,M1_simplecnn,M2c_resnet50_linear,0.9522,0.9944,0.0422,10,221,5.937e-53,True
+frozen features: SVM -> logistic regression,M2b_resnet50_svm,M2a_resnet50_logreg,0.9952,0.9956,0.0004,2,4,0.6875,False
+frozen features: logistic regression -> linear layer (PyTorch),M2a_resnet50_logreg,M2c_resnet50_linear,0.9956,0.9944,-0.0012,14,8,0.2863,False
+frozen ResNet-50 -> full fine-tuning,M2c_resnet50_linear,M3_resnet50_ft,0.9944,0.9946,0.0002,17,18,1.0,False
+augmentation on (fine-tuned ResNet-50),M3_resnet50_ft_noaug,M3_resnet50_ft,0.9948,0.9946,-0.0002,13,12,1.0,False
+ResNet-50 -> ConvNeXt-Tiny (both fine-tuned),M3_resnet50_ft,M4_convnext_tiny_ft,0.9946,0.9968,0.0022,7,18,0.04329,True
+CLIP zero-shot -> CLIP linear probe,M5a_clip_vitl14_zeroshot,M5b_clip_vitl14_logreg,0.9984,0.9986,0.0002,0,1,1.0,False
+fine-tuned ConvNeXt-Tiny -> CLIP ViT-L/14 linear probe,M4_convnext_tiny_ft,M5b_clip_vitl14_logreg,0.9968,0.9986,0.0018,6,15,0.07835,False
+top-5 pair,M5b_clip_vitl14_logreg,M5a_clip_vitl14_zeroshot,0.9986,0.9984,-0.0002,1,0,1.0,False
+top-5 pair,M5b_clip_vitl14_logreg,M4_convnext_tiny_ft,0.9986,0.9968,-0.0018,15,6,0.07835,False
+top-5 pair,M5b_clip_vitl14_logreg,M2a_resnet50_logreg,0.9986,0.9956,-0.003,22,7,0.00813,True
+top-5 pair,M5b_clip_vitl14_logreg,M2b_resnet50_svm,0.9986,0.9952,-0.0034,24,7,0.003327,True
+top-5 pair,M5a_clip_vitl14_zeroshot,M4_convnext_tiny_ft,0.9984,0.9968,-0.0016,15,7,0.1338,False
+top-5 pair,M5a_clip_vitl14_zeroshot,M2a_resnet50_logreg,0.9984,0.9956,-0.0028,22,8,0.01612,True
+top-5 pair,M5a_clip_vitl14_zeroshot,M2b_resnet50_svm,0.9984,0.9952,-0.0032,24,8,0.007,True
+top-5 pair,M4_convnext_tiny_ft,M2a_resnet50_logreg,0.9968,0.9956,-0.0012,14,8,0.2863,False
+top-5 pair,M4_convnext_tiny_ft,M2b_resnet50_svm,0.9968,0.9952,-0.0016,16,8,0.1516,False
+top-5 pair,M2a_resnet50_logreg,M2b_resnet50_svm,0.9956,0.9952,-0.0004,4,2,0.6875,False

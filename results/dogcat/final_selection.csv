@@ -1,0 +1,15 @@
+members,n_models,tta,val_acc,val_nll,n_wrong
+M5a_clip_vitl14_zeroshot+M4_convnext_tiny_ft,2,True,0.999,0.0286,5
+M5a_clip_vitl14_zeroshot,1,True,0.9988,0.00505,6
+M5b_clip_vitl14_logreg+M5a_clip_vitl14_zeroshot,2,True,0.9988,0.01555,6
+M5b_clip_vitl14_logreg,1,True,0.9988,0.02633,6
+M5b_clip_vitl14_logreg+M5a_clip_vitl14_zeroshot+M4_convnext_tiny_ft,3,True,0.9988,0.02773,6
+M5b_clip_vitl14_logreg+M5a_clip_vitl14_zeroshot+M4_convnext_tiny_ft,3,False,0.9988,0.02779,6
+M5b_clip_vitl14_logreg+M5a_clip_vitl14_zeroshot,2,False,0.9986,0.01575,7
+M5b_clip_vitl14_logreg,1,False,0.9986,0.0266,7
+M5a_clip_vitl14_zeroshot+M4_convnext_tiny_ft,2,False,0.9986,0.02857,7
+M5a_clip_vitl14_zeroshot,1,False,0.9984,0.00523,8
+M5b_clip_vitl14_logreg+M4_convnext_tiny_ft,2,True,0.998,0.03966,10
+M5b_clip_vitl14_logreg+M4_convnext_tiny_ft,2,False,0.998,0.03975,10
+M4_convnext_tiny_ft,1,True,0.9968,0.05578,16
+M4_convnext_tiny_ft,1,False,0.9968,0.05593,16

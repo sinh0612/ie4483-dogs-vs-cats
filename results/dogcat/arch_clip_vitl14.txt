@@ -1,0 +1,14 @@
+CLIP ViT-L/14 image encoder (open_clip, pretrained=openai), frozen; features -> StandardScaler -> LogisticRegression
+
+input: 3x224x224   output: 768
+
+layer                                      type                         output shape       params
+--------------------------------------------------------------------------------------------------
+conv1                                      Conv2d                         1024x16x16      602,112
+patch_dropout                              Identity                         257x1024            0
+ln_pre                                     LayerNorm                        257x1024        2,048
+transformer                                Transformer                      257x1024  302,309,376
+ln_post                                    LayerNorm                        257x1024        2,048
+--------------------------------------------------------------------------------------------------
+total params: 303,966,208   trainable: 303,966,208
+classifier: sklearn LogisticRegression on 768-d features (768 weights + 1 bias)

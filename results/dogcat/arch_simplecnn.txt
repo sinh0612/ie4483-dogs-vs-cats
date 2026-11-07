@@ -1,0 +1,38 @@
+SimpleCNN (trained from scratch)
+
+input: 3x224x224   output: 2
+
+layer                                      type                         output shape       params
+--------------------------------------------------------------------------------------------------
+    features.0.0                           Conv2d                         32x224x224          864
+    features.0.1                           BatchNorm2d                    32x224x224           64
+    features.0.2                           ReLU                           32x224x224            0
+    features.0.3                           MaxPool2d                      32x112x112            0
+  features.0                               Sequential                     32x112x112          928
+    features.1.0                           Conv2d                         64x112x112       18,432
+    features.1.1                           BatchNorm2d                    64x112x112          128
+    features.1.2                           ReLU                           64x112x112            0
+    features.1.3                           MaxPool2d                        64x56x56            0
+  features.1                               Sequential                       64x56x56       18,560
+    features.2.0                           Conv2d                          128x56x56       73,728
+    features.2.1                           BatchNorm2d                     128x56x56          256
+    features.2.2                           ReLU                            128x56x56            0
+    features.2.3                           MaxPool2d                       128x28x28            0
+  features.2                               Sequential                      128x28x28       73,984
+    features.3.0                           Conv2d                          256x28x28      294,912
+    features.3.1                           BatchNorm2d                     256x28x28          512
+    features.3.2                           ReLU                            256x28x28            0
+    features.3.3                           MaxPool2d                       256x14x14            0
+  features.3                               Sequential                      256x14x14      295,424
+    features.4.0                           Conv2d                          512x14x14    1,179,648
+    features.4.1                           BatchNorm2d                     512x14x14        1,024
+    features.4.2                           ReLU                            512x14x14            0
+    features.4.3                           MaxPool2d                         512x7x7            0
+  features.4                               Sequential                        512x7x7    1,180,672
+features                                   Sequential                        512x7x7    1,569,568
+pool                                       AdaptiveAvgPool2d                 512x1x1            0
+dropout                                    Dropout                               512            0
+fc                                         Linear                                  2        1,026
+--------------------------------------------------------------------------------------------------
+total params: 1,570,594   trainable: 1,570,594
+loss: CrossEntropy with label smoothing 0.1
