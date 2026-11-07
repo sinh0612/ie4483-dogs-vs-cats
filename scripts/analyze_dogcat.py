@@ -213,27 +213,44 @@ def main():
 
 
 def make_figures(runs, comp, labels, val_paths, p_val_final, final, tp):
-    # learning curves
-    curves = [g for g in ["M1_simplecnn", "M1_simplecnn_noaug", "M3_resnet50_ft", "M3_resnet50_ft_noaug",
-                          "M4_convnext_tiny_ft"] if g in runs]
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    for g in curves:
-        h = runs[g][42]["history"]
-        line, = axes[0].plot(h.epoch, h.train_loss, "--", alpha=0.8)
-        axes[0].plot(h.epoch, h.val_loss, "-", color=line.get_color(), label=g)
-        axes[1].plot(h.epoch, h.train_acc, "--", color=line.get_color(), alpha=0.8)
-        axes[1].plot(h.epoch, h.val_acc, "-", color=line.get_color(), label=g)
-    axes[0].set(xlabel="epoch", ylabel="cross-entropy loss", title="Loss (dashed = train, solid = val)")
-    axes[1].set(xlabel="epoch", ylabel="accuracy", title="Accuracy (dashed = train, solid = val)")
-    axes[0].legend(fontsize=9)
-    for ax in axes:
-        ax.grid(alpha=0.3)
+    # learning curves: rows = loss / accuracy, one column per model family; dashed = train, solid = val
+    panels = [("SimpleCNN from scratch", [("M1_simplecnn", 42, "with augmentation"),
+                                          ("M1_simplecnn_noaug", 42, "no augmentation")]),
+              ("ResNet-50 fine-tuned", [("M3_resnet50_ft", 42, "with augmentation"),
+                                        ("M3_resnet50_ft_noaug", 42, "no augmentation")]),
+              ("ConvNeXt-Tiny fine-tuned", [("M4_convnext_tiny_ft", s, f"seed {s}") for s in (42, 43, 44)])]
+    colors = ["#2a78d6", "#eb6834", "#1baf7a"]
+    fig, axes = plt.subplots(2, 3, figsize=(16, 8.5))
+    for col, (title, items) in enumerate(panels):
+        items = [it for it in items if it[0] in runs and it[1] in runs[it[0]]]
+        for (g, s, label), c in zip(items, colors):
+            h = runs[g][s]["history"]
+            axes[0, col].plot(h.epoch, h.train_loss, "--", color=c, lw=1.5)
+            axes[0, col].plot(h.epoch, h.val_loss, "-", color=c, lw=2, label=label)
+            axes[1, col].plot(h.epoch, h.train_acc, "--", color=c, lw=1.5)
+            axes[1, col].plot(h.epoch, h.val_acc, "-", color=c, lw=2, label=label)
+        axes[0, col].axhline(0.199, color="#8a8984", lw=0.8)
+        axes[0, col].text(axes[0, col].get_xlim()[0] + 0.3, 0.192, "train-loss floor with label smoothing 0.1",
+                          ha="left", va="top", fontsize=8.5, color="#52514e")
+        axes[0, col].set_title(title)
+        axes[0, col].legend(fontsize=9, title="solid = val, dashed = train", title_fontsize=8.5,
+                            loc="upper right", frameon=False)
+        axes[0, col].set(ylabel="cross-entropy loss" if col == 0 else None)
+        axes[1, col].set(xlabel="epoch", ylabel="accuracy" if col == 0 else None)
+        for ax in axes[:, col]:
+            ax.grid(alpha=0.3)
+            ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    axes[0, 0].set_ylim(0, None)
+    axes[1, 0].set_ylim(None, 1.0)
+    for col in (1, 2):
+        axes[0, col].set_ylim(0, 0.45)
+        axes[1, col].set_ylim(0.90, 1.002)
     plt.tight_layout()
     plt.savefig(os.path.join(FIG, "fig_curves.png"), dpi=200)
     plt.close(fig)
 
     # zoomed curves for the fine-tuned models
-    ft = [g for g in curves if not g.startswith("M1")]
+    ft = [g for g in ["M3_resnet50_ft", "M3_resnet50_ft_noaug", "M4_convnext_tiny_ft"] if g in runs]
     fig, axes = plt.subplots(1, len(ft), figsize=(5.5 * len(ft), 4.5), squeeze=False)
     for ax, g in zip(axes[0], ft):
         for s, run in sorted(runs[g].items()):
