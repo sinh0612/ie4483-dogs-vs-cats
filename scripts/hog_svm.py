@@ -18,7 +18,7 @@ from src.utils import CACHE_ROOT, DOGCAT_RESULTS, FEATURE_DIR, Timer, set_seed, 
 
 SIZE = 128
 HOG_ARGS = dict(orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2), block_norm="L2-Hys")
-SVM_C = [0.00001, 0.00003, 0.0001, 0.0003, 0.001]
+SVM_C = [0.000001, 0.000003, 0.00001, 0.00003, 0.0001]
 
 
 def load_gray(path, flip=False):
