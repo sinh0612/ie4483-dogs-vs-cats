@@ -6,7 +6,7 @@
 # Set the GPU with CUDA_VISIBLE_DEVICES.
 set -e
 cd "$(dirname "$0")/.."
-PY=${PY:-/usr1/home/s126mdg24_05/miniconda3/envs/ie4483/bin/python}
+source scripts/config.sh
 RUNS=results/dogcat/runs
 
 # best lr among sweep runs: highest val acc, then lowest val loss

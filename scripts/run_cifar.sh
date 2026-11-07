@@ -6,7 +6,7 @@
 # Set the GPU with CUDA_VISIBLE_DEVICES.
 set -e
 cd "$(dirname "$0")/.."
-PY=${PY:-/usr1/home/s126mdg24_05/miniconda3/envs/ie4483/bin/python}
+source scripts/config.sh
 RUNS=results/cifar/runs
 G2_LRS="1e-3 3e-4 1e-4 3e-5"
 G2_ARGS="--model convnext_tiny --optimizer adamw --wd 0.05 --batch-size 128 --warmup-epochs 1 --label-smoothing 0.1 --img-size 224"
