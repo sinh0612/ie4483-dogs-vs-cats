@@ -1,5 +1,5 @@
 """Architecture diagrams (matplotlib) + output shape / parameter tables (arch_<name>.txt).
-Usage: python scripts/plot_arch.py simplecnn [final]"""
+Usage: python scripts/plot_arch.py simplecnn final [resnet50 convnext_tiny clip_vitl14]"""
 import json
 import os
 import sys
@@ -8,7 +8,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import torch
-import torch.nn as nn
 from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -222,6 +221,9 @@ def main():
         tta = " with flip TTA" if cfg["tta"] else ""
         merge = ("Average", "mean of P(dog)\nlabel = P > 0.5", "dog=1 / cat=0") if len(rows) > 1 else None
         save_diagram(rows, f"Final model: {' + '.join(cfg['members'])}{tta}", os.path.join(FIG, "fig_arch_final.png"), merge)
+    for t in ("resnet50", "convnext_tiny", "clip_vitl14"):  # shape tables only
+        if t in targets:
+            BUILDERS[t]()
     print(f"Total time: {timer}")
 
 

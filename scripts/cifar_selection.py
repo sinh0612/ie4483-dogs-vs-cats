@@ -1,4 +1,4 @@
-"""Val-only summary of all CIFAR-10 runs (lr sweeps, augmentation variants, seeds) and a figure of the G1 variants."""
+"""Val-only summary of the part g CIFAR-10 runs (lr sweeps, augmentation variants, seeds) and a figure of the G1 variants."""
 import glob
 import json
 import os
@@ -19,6 +19,8 @@ def main():
     timer = Timer()
     rows = []
     for f in sorted(glob.glob(os.path.join(CIFAR_RESULTS, "runs", "*", "run_info.json"))):
+        if os.path.basename(os.path.dirname(f)).startswith("H_"):  # part h runs: eval_imbalance.py
+            continue
         d = json.load(open(f))
         rows.append(dict(run=d["run_name"], model=d["model"], optimizer=d["optimizer"], lr=d["lr"],
                          epochs=d["epochs"], n_train=d["n_train"], erase=d["erase"], no_aug=d["no_aug"],
