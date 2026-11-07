@@ -33,7 +33,7 @@ resnet)
 convnext)
     $PY scripts/train_dogcat.py --model simplecnn --run-name M1_simplecnn_s42 --lr 1e-3 --epochs 20
     $PY scripts/train_dogcat.py --model simplecnn --run-name M1_simplecnn_noaug_s42 --lr 1e-3 --epochs 20 --no-aug
-    for lr in 3e-4 1e-4 3e-5; do
+    for lr in 3e-4 1e-4 3e-5 1e-5; do  # 1e-5 added later: 3e-5 was at the grid edge
         $PY scripts/train_dogcat.py --model convnext_tiny --run-name sweep_convnext_tiny_lr$lr --lr $lr --epochs 3 --sweep
     done
     LR=$(best_lr sweep_convnext_tiny)
