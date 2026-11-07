@@ -1,7 +1,7 @@
 data/
 logs/
 checkpoints/
-runs/
+/runs/
 *.pth
 *.pt
 *.ckpt
