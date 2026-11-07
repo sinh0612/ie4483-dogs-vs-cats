@@ -96,3 +96,22 @@ python scripts/eval_cifar.py --groups G1_resnet18_lr0.2_erase G2_convnext_tiny  
 | ConvNeXt-Tiny ImageNet-pretrained, 32 -> 224, fine-tuned | 0.98367 ± 0.00031 | 0.9819 ± 0.0015 |
 
 Details: `results/cifar/summary_g.md`.
+
+## How to run (imbalanced CIFAR-10, part h)
+
+Bird, cat and dog keep 5% of their train images (225 each, ratio 20:1); val and test stay balanced.
+
+```bash
+for s in 42 43 44; do CUDA_VISIBLE_DEVICES=1 bash scripts/run_imbalance.sh g1 $s; done   # 6 methods x 3 seeds, ~4 min per run
+CUDA_VISIBLE_DEVICES=1 bash scripts/run_imbalance.sh g2 ce      # ConvNeXt-Tiny, CE (~13 min)
+CUDA_VISIBLE_DEVICES=2 bash scripts/run_imbalance.sh g2 best    # ConvNeXt-Tiny, best method on val
+python scripts/eval_imbalance.py --split val                    # selection tables
+python scripts/eval_imbalance.py --split test                   # official test set, run once
+```
+
+| ResNet-18, seeds 42/43/44 | test balanced acc | minority recall | majority recall |
+|---|---|---|---|
+| cross-entropy | 0.8313 ± 0.0018 | 0.5281 ± 0.0186 | 0.9613 ± 0.0100 |
+| logit-adjusted loss (best) | 0.8638 ± 0.0015 | 0.6482 ± 0.0071 | 0.9561 ± 0.0032 |
+
+Pretrained ConvNeXt-Tiny (seed 42): 0.9514 with CE, 0.9668 with logit adjustment. Details: `results/cifar/summary_h.md`.
