@@ -110,11 +110,11 @@ def main():
         ax.bar(np.arange(10) - 0.4 + width * (i + 0.5), r.mean(0), width * 0.9, yerr=r.std(0, ddof=1),
                color=COLORS[i], label=LABELS[m], error_kw=dict(lw=1, ecolor="#555"), zorder=2)
     ax.set_xticks(range(10), [c + (" *" if i in MINORITY else "") for i, c in enumerate(CIFAR_CLASSES)])
-    ax.set(ylabel=f"{S} recall", ylim=(0, 1.02),
+    ax.set(ylabel=f"{S} recall", ylim=(0, 1.14), yticks=np.arange(0, 1.01, 0.2),
            title=f"Per-class {S} recall, ResNet-18 on imbalanced CIFAR-10 (mean of seeds 42/43/44, "
                  f"* = minority class, 225 train images)")
     ax.grid(axis="y", alpha=0.3, zorder=1)
-    ax.legend(fontsize=9, ncol=3, loc="lower left")
+    ax.legend(fontsize=9, ncol=6, loc="upper center")
     plt.tight_layout()
     plt.savefig(os.path.join(fig_dir, f"fig_imb_per_class_recall_{S}.png"), dpi=200)
     plt.close(fig)
@@ -154,10 +154,10 @@ def main():
         if i in MINORITY:
             ax.text(i - 0.2, n + 60, str(n), ha="center", fontsize=9)
     ax.set_xticks(x, CIFAR_CLASSES, rotation=30, ha="right")
-    ax.set(ylabel="images per class",
+    ax.set(ylabel="images per class", ylim=(0, 5400),
            title=f"Part h data: {sum(counts)} train images, bird/cat/dog kept at 5% (ratio 20:1); test 1000/class")
     ax.grid(axis="y", alpha=0.3, zorder=1)
-    ax.legend(fontsize=10)
+    ax.legend(fontsize=10, ncol=2, loc="upper center")
     plt.tight_layout()
     plt.savefig(os.path.join(fig_dir, "fig_imb_distribution.png"), dpi=200)
     plt.close(fig)
