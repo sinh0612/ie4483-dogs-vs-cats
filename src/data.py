@@ -72,8 +72,8 @@ def make_loader(items, transform, batch_size, shuffle, seed=42, num_workers=12):
     return loader_for(DogCatDataset(items, transform), batch_size, shuffle, seed, num_workers)
 
 
-def loader_for(dataset, batch_size, shuffle, seed=42, num_workers=12):
+def loader_for(dataset, batch_size, shuffle, seed=42, num_workers=12, sampler=None):
     g = torch.Generator().manual_seed(seed)
-    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle,
+    return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle and sampler is None, sampler=sampler,
                       num_workers=num_workers, pin_memory=True, drop_last=False,
                       worker_init_fn=seed_worker, generator=g, persistent_workers=num_workers > 0)

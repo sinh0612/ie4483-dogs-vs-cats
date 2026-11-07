@@ -30,6 +30,18 @@ def split_train_val(targets, val_per_class=500, seed=42):
     return train_idx, val_idx
 
 
+def make_imbalanced(train_idx, targets, minority, keep_frac=0.05, seed=42):
+    """Keep only keep_frac of the train images of the minority classes (fixed by seed)."""
+    rng = np.random.RandomState(seed)
+    keep = []
+    for c in range(len(CIFAR_CLASSES)):
+        idx = train_idx[targets[train_idx] == c]
+        if c in minority:
+            idx = rng.choice(idx, int(round(len(idx) * keep_frac)), replace=False)
+        keep.extend(idx)
+    return np.sort(np.array(keep))
+
+
 def get_cifar_transform(train, aug=True, erase=False, imagenet_norm=False):
     mean, std = (IMAGENET_MEAN, IMAGENET_STD) if imagenet_norm else (CIFAR_MEAN, CIFAR_STD)
     tf = [T.RandomCrop(32, padding=4), T.RandomHorizontalFlip()] if (train and aug) else []

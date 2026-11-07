@@ -61,8 +61,8 @@ def predict(model, loader, device, tta=False, with_loss=True):
 
 
 def fit(model, train_loader, val_loader, epochs, lr, weight_decay, device, run_dir,
-        label_smoothing=0.1, warmup_epochs=1, ckpt_path=None, optimizer="adamw"):
-    criterion = nn.CrossEntropyLoss(label_smoothing=label_smoothing)
+        label_smoothing=0.1, warmup_epochs=1, ckpt_path=None, optimizer="adamw", criterion=None):
+    criterion = (criterion or nn.CrossEntropyLoss(label_smoothing=label_smoothing)).to(device)
     if optimizer == "sgd":
         optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9, nesterov=True, weight_decay=weight_decay)
     else:
