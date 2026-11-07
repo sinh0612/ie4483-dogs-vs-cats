@@ -1,256 +1,277 @@
-# IE4483 Mini Project (Option 2): Dogs vs. Cats
+# Dogs vs. Cats, CIFAR-10 and Imbalanced CIFAR-10 in PyTorch
 
-Code and results for the IE4483 Artificial Intelligence and Data Mining mini project (Option 2).
-The main task is binary image classification (dog = 1, cat = 0) on a subset of the Kaggle Dogs vs. Cats
-data: 10000 training images per class, 2500 validation images per class and 500 unlabeled test images.
-We compare a hand-crafted baseline, a small CNN trained from scratch, fine-tuned ImageNet backbones and
-CLIP. The same code is then applied to CIFAR-10 (part g) and to a CIFAR-10 version where three classes
-have only 5% of their labels (part h).
+Image classification from hand-crafted features up to CLIP, on three problems: Dogs vs. Cats
+(binary), CIFAR-10 (10 classes) and a CIFAR-10 version where three classes keep only 5% of their
+labels. All choices are made on a validation split, every main result is repeated over 3 seeds, and
+model differences are checked with bootstrap intervals and McNemar tests.
 
-## Team members
+Group project for IE4483 Artificial Intelligence and Data Mining, Nanyang Technological University (AY2026/27).
 
-| name | matriculation no. |
+![Python](https://img.shields.io/badge/Python-3.10-3776AB?logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.5-EE4C2C?logo=pytorch&logoColor=white)
+![GPU](https://img.shields.io/badge/GPU-RTX%203090-76B900?logo=nvidia&logoColor=white)
+
+<p align="center">
+  <img src="docs/figures/dogcat_val_errors.png" width="88%" alt="Validation errors of every Dogs vs. Cats model">
+</p>
+
+## Highlights
+
+| | |
 |---|---|
-| TODO | TODO |
-| TODO | TODO |
-| TODO | TODO |
+| **99.90%** | Dogs vs. Cats validation accuracy (5 errors out of 5,000), down from 1,328 errors for HOG + SVM |
+| **98.19%** | CIFAR-10 test accuracy with a fine-tuned ConvNeXt-Tiny; 94.28% for a ResNet-18 trained from scratch in about 5 minutes |
+| **+12.0 pp** | recall on the rare classes with a logit-adjusted loss, at a cost of only 0.5 pp on the common classes |
+| **19** | near-duplicate train images found and removed before training, so validation is not leaked |
 
-## Contributions
+## Results
 
-- TODO: member 1
-- TODO: member 2
-- TODO: member 3
+### Dogs vs. Cats
 
-## Main results
+20,000 train / 5,000 validation / 500 unlabeled test images (subset of the Kaggle competition).
 
-**Dogs vs. Cats** (5000 validation images; the test labels are not available).
+| approach | val accuracy | errors / 5,000 |
+|---|---:|---:|
+| HOG features + linear SVM | 73.44% | 1,328 |
+| Small CNN from scratch (1.6 M params) | 95.22% | 239 |
+| ResNet-50, frozen ImageNet features + logistic regression | 99.56% | 22 |
+| ResNet-50, fine-tuned (3 seeds) | 99.45 ± 0.03% | 27 |
+| ConvNeXt-Tiny, fine-tuned (3 seeds) | 99.64 ± 0.09% | 18 |
+| CLIP ViT-L/14, zero-shot (no training at all) | 99.84% | 8 |
+| CLIP ViT-L/14, frozen features + logistic regression | 99.86% | 7 |
+| **Final: CLIP zero-shot + ConvNeXt-Tiny, flip TTA** | **99.90%** | **5** |
 
-| model | val acc |
-|---|---|
-| HOG + LinearSVC | 0.7344 |
-| SimpleCNN from scratch (no augmentation) | 0.9440 |
-| SimpleCNN from scratch | 0.9522 |
-| ResNet-50 frozen features + logistic regression | 0.9956 |
-| ResNet-50 fine-tuned (seeds 42/43/44) | 0.99453 ± 0.00031 |
-| ConvNeXt-Tiny fine-tuned (seeds 42/43/44) | 0.99640 ± 0.00087 |
-| CLIP ViT-L/14 zero-shot | 0.9984 |
-| CLIP ViT-L/14 frozen features + logistic regression | 0.9986 |
-| **Final: CLIP zero-shot + ConvNeXt-Tiny (s42), flip TTA** | **0.9990** |
+What the comparison shows:
 
-The final combination was picked on val, so its val accuracy is slightly optimistic. It is not
-significantly better than CLIP + logistic regression (McNemar p = 0.69). Its test predictions are in
-`submission.csv`.
+- **Pretraining matters most.** Replacing the small CNN with a linear layer on frozen ResNet-50
+  features cuts the errors from 239 to 28 (McNemar p < 1e-50).
+- **Full fine-tuning did not beat a linear model on frozen ResNet-50 features**, even though it cost about 10 times
+  more compute. A stronger backbone (ConvNeXt-Tiny, p = 0.043) or a better pretraining corpus (CLIP) helped more.
+- **Augmentation helps when training from scratch** (+0.8 pp, train-val gap 5.4 pp to 0.1 pp) and
+  makes no measurable difference once the backbone is pretrained.
+- The final ensemble was picked on validation, so its score is slightly optimistic. It is
+  only 2 images better than the best single model (p = 0.69). On the 500 test images it predicts
+  exactly the same labels as ConvNeXt-Tiny and both CLIP models.
 
-**CIFAR-10, part g** (official 10000-image test set, evaluated once; seeds 42/43/44).
+<p align="center">
+  <img src="results/dogcat/figures/fig_gradcam_test.png" width="60%" alt="Grad-CAM on hard test images">
+  <br><sub>Grad-CAM on hard test images. Typical failure cases: placeholder images with no animal, curled-up kittens, cluttered cages.</sub>
+</p>
 
-| model | val acc | test acc |
-|---|---|---|
-| ResNet-18 (CIFAR stem) from scratch, crop + flip + RandomErasing, 40 epochs | 0.94560 ± 0.00250 | 0.9428 ± 0.0021 |
-| ConvNeXt-Tiny ImageNet-pretrained, 32 -> 224, 8 epochs | 0.98367 ± 0.00031 | 0.9819 ± 0.0015 |
+### CIFAR-10
 
-**Imbalanced CIFAR-10, part h.** Bird, cat and dog keep 225 train images each (5%, ratio 20:1). Val and
-test are balanced, so test accuracy equals balanced accuracy. ResNet-18 with the G1 recipe, seeds 42/43/44.
+45,000 train / 5,000 validation (split from the official training set) / 10,000 official test images,
+used once at the end.
 
-| method | test balanced acc | macro-F1 | minority recall | majority recall |
-|---|---|---|---|---|
-| cross-entropy (B0) | 0.8313 ± 0.0018 | 0.8195 ± 0.0013 | 0.5281 ± 0.0186 | 0.9613 ± 0.0100 |
-| class-balanced loss, beta 0.999 | 0.8364 ± 0.0035 | 0.8274 ± 0.0057 | 0.5625 ± 0.0274 | 0.9538 ± 0.0070 |
-| inverse-frequency weights | 0.8146 ± 0.0034 | 0.8082 ± 0.0046 | 0.5814 ± 0.0177 | 0.9145 ± 0.0030 |
-| class-balanced re-sampling | 0.8128 ± 0.0047 | 0.8022 ± 0.0086 | 0.5380 ± 0.0638 | 0.9306 ± 0.0276 |
-| **logit-adjusted loss, tau 1** | **0.8638 ± 0.0015** | **0.8590 ± 0.0018** | **0.6482 ± 0.0071** | 0.9561 ± 0.0032 |
-| focal loss, gamma 2 | 0.8269 ± 0.0016 | 0.8144 ± 0.0017 | 0.5122 ± 0.0068 | 0.9617 ± 0.0026 |
+| model | val accuracy | test accuracy | train time |
+|---|---:|---:|---:|
+| ResNet-18 (CIFAR stem), from scratch, 40 epochs | 94.56 ± 0.25% | 94.28 ± 0.21% | 5.3 min |
+| ConvNeXt-Tiny, ImageNet-pretrained, 32 → 224 px, 8 epochs | 98.37 ± 0.03% | **98.19 ± 0.15%** | 19.7 min |
 
-Pretrained ConvNeXt-Tiny (seed 42): balanced acc 0.9514 with cross-entropy and 0.9668 with the
-logit-adjusted loss (minority recall 0.8633 -> 0.9227). The method was chosen on val before the test run.
+Cat ↔ dog is the most confused pair for both models (21% and 34% of all errors). At 32 × 32 the face
+and fur details that make Dogs vs. Cats easy are mostly gone, and upsampling cannot bring them back.
 
-Detailed notes for the report: `results/dogcat/summary.md`, `results/cifar/summary_g.md`,
-`results/cifar/summary_h.md`, `results/data_audit/audit.md`.
+<p align="center">
+  <img src="results/cifar/figures/fig_cifar_confusion_test.png" width="80%" alt="CIFAR-10 test confusion matrices">
+</p>
 
-![Dogs vs. Cats model comparison](results/dogcat/figures/fig_model_comparison.png)
+### Imbalanced CIFAR-10
 
-![CIFAR-10 test confusion matrices](results/cifar/figures/fig_cifar_confusion_test.png)
+Bird, cat and dog keep 225 training images each (5%, imbalance ratio 20 : 1). Validation and test stay
+balanced, so test accuracy equals balanced accuracy. Same ResNet-18 recipe for every method, 3 seeds.
 
-![Per-class recall on imbalanced CIFAR-10](results/cifar/imbalance/figures/fig_imb_per_class_recall_test.png)
+| method | balanced acc | macro-F1 | rare-class recall | common-class recall |
+|---|---:|---:|---:|---:|
+| cross-entropy | 83.13 ± 0.18% | 81.95% | 52.8% | 96.1% |
+| focal loss (γ = 2) | 82.69 ± 0.16% | 81.44% | 51.2% | 96.2% |
+| class-balanced re-sampling | 81.28 ± 0.47% | 80.22% | 53.8% | 93.1% |
+| inverse-frequency weights | 81.46 ± 0.34% | 80.82% | 58.1% | 91.5% |
+| class-balanced loss (β = 0.999) | 83.64 ± 0.35% | 82.74% | 56.2% | 95.4% |
+| **logit-adjusted loss (τ = 1)** | **86.38 ± 0.15%** | **85.90%** | **64.8%** | 95.6% |
 
-## Repository layout
+<p align="center">
+  <img src="docs/figures/imbalance_tradeoff.png" width="88%" alt="Recall change of each imbalance method">
+</p>
+
+- Logit adjustment is the only method that clearly helps the rare classes without hurting the
+  common ones, and its results barely change across seeds.
+- Inverse-frequency weights and re-sampling over-correct: the model memorises the 225 rare images and
+  the common classes lose 3-5 pp.
+- Pretraining is the bigger lever. A pretrained ConvNeXt-Tiny with plain cross-entropy already
+  reaches 86.3% rare-class recall (95.1% balanced accuracy); adding logit adjustment gives 92.3%
+  (96.7%).
+
+<p align="center">
+  <img src="docs/figures/imbalance_per_class_recall.png" width="88%" alt="Per-class recall heatmap">
+</p>
+
+## How it works
+
+- **Data audit.** Perceptual hashing (pHash, Hamming distance ≤ 5) finds 20 near-duplicate pairs
+  across splits. The 19 train-side copies are left out of training. Three of the pairs are Kaggle
+  "photo unavailable" placeholders with different labels.
+- **Training recipe** (fine-tuning). AdamW, 1-epoch linear warm-up then cosine decay, label
+  smoothing 0.1, mixed precision. Learning rates come from a validation sweep. The checkpoint kept
+  is the epoch with the best validation accuracy.
+- **Model selection.** Training uses the train split only. Hyperparameters, the final Dogs vs. Cats
+  combination and the imbalance method are all chosen on validation. The CIFAR-10 test set is
+  evaluated once.
+- **Uncertainty.** Main models run with seeds 42, 43 and 44 (mean ± sample std). Single runs get 95%
+  bootstrap intervals, and paired model comparisons use McNemar's exact test.
+
+<details>
+<summary><b>Repository layout</b></summary>
 
 ```
-src/                 shared code
-  utils.py           paths, seeding, timer, csv helpers
-  data.py            dogs vs cats dataset, transforms, seeded DataLoader
-  models.py          SimpleCNN, ResNet-50, ConvNeXt-Tiny, CIFAR ResNet-18, input resize wrapper
-  engine.py          training loop (AMP, warmup + cosine), prediction with optional flip TTA
-  cifar.py           CIFAR-10 loading, 45k/5k split, imbalanced subset, transforms
-  losses.py          class-balanced, inverse-frequency, logit-adjusted and focal losses
+src/
+  utils.py            paths, seeding, timer, csv helpers
+  data.py             Dogs vs. Cats dataset, transforms, seeded DataLoader
+  models.py           SimpleCNN, ResNet-50, ConvNeXt-Tiny, CIFAR ResNet-18
+  engine.py           training loop (AMP, warm-up + cosine), prediction with flip TTA
+  cifar.py            CIFAR-10 loading, 45k/5k split, imbalanced subset
+  losses.py           class-balanced, inverse-frequency, logit-adjusted and focal losses
 scripts/
-  config.sh          python interpreter used by the run_*.sh scripts (only machine-specific path)
-  audit_data.py      counts, broken files, sizes, near-duplicates
-  cache_images.py    resized image cache
-  make_data_figures.py
-  train_dogcat.py    one dogs vs cats training run
-  extract_features.py, probe_features.py   frozen ResNet-50 / CLIP features, zero-shot, linear probes
-  hog_svm.py         HOG + LinearSVC baseline
-  analyze_dogcat.py  tables, McNemar tests, final selection on val, submission.csv, figures
-  plot_arch.py       architecture figures and shape tables
-  gradcam.py         Grad-CAM figures
-  prepare_cifar.py, train_cifar.py, cifar_selection.py, eval_cifar.py   part g
-  eval_imbalance.py  part h
-  run_dogcat.sh, run_cifar.sh, run_imbalance.sh   experiment queues
+  audit_data.py, cache_images.py, make_data_figures.py
+  train_dogcat.py, extract_features.py, probe_features.py, hog_svm.py
+  analyze_dogcat.py, plot_arch.py, gradcam.py
+  prepare_cifar.py, train_cifar.py, cifar_selection.py, eval_cifar.py, eval_imbalance.py
+  make_readme_figures.py
+  run_dogcat.sh, run_cifar.sh, run_imbalance.sh, config.sh
 results/
-  data_audit/        audit report, duplicate pairs, excluded train list
-  dogcat/            summary.md, CSV tables, arch_*.txt, figures/, runs/<run>/
-  cifar/             summary_g.md, summary_h.md, dataset_info.md, CSV tables, figures/, imbalance/, runs/<run>/
-submission.csv       test predictions (id, label)
-sampleSubmission.csv
+  data_audit/         duplicate pairs, excluded train list
+  dogcat/             tables, McNemar tests, figures, per-run histories
+  cifar/              part g and imbalance tables, figures, per-run histories
+docs/figures/         figures used in this README
+submission.csv        test predictions (id, label; 1 = dog, 0 = cat)
 ```
 
-Not in git: `data/` (images, cache, features), `checkpoints/`, `logs/`.
+`data/`, `checkpoints/` and `logs/` are not tracked.
+</details>
 
-## Setup
+<details>
+<summary><b>Setup and data</b></summary>
 
 Tested with Python 3.10, PyTorch 2.5.1 and torchvision 0.20.1 (CUDA 12.1) on Linux.
 
 ```bash
 conda create -n ie4483 python=3.10 -y
 conda activate ie4483
-# install PyTorch for your CUDA version, see pytorch.org. We used:
 pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cu121
 pip install -r requirements.txt
 ```
 
-The `run_*.sh` scripts call the interpreter set in `scripts/config.sh`. Edit that line, or override it,
-e.g. `PY=$(which python) bash scripts/run_dogcat.sh resnet`. Pretrained weights (torchvision ResNet-50 and
-ConvNeXt-Tiny, open_clip ViT-L/14 `openai`) are downloaded automatically on first use.
+The `run_*.sh` scripts use the interpreter set in `scripts/config.sh`, or override it with
+`PY=$(which python) bash scripts/run_dogcat.sh resnet`. Pretrained weights (torchvision ResNet-50,
+ConvNeXt-Tiny, open_clip ViT-L/14 `openai`) download automatically.
 
-## Data
-
-Dogs vs. Cats: download the project dataset from NTULearn (a subset of the Kaggle Dogs vs. Cats
-competition) and place it as
+Dogs vs. Cats: place the course dataset as
 
 ```
-data/dataset/train/cat/*.jpg   data/dataset/train/dog/*.jpg
-data/dataset/val/cat/*.jpg     data/dataset/val/dog/*.jpg
+data/dataset/train/{cat,dog}/*.jpg
+data/dataset/val/{cat,dog}/*.jpg
 data/dataset/test/1.jpg ... 500.jpg
 ```
 
-Keep `sampleSubmission.csv` in the repo root.
+and keep `sampleSubmission.csv` in the repo root. CIFAR-10 is downloaded by `scripts/prepare_cifar.py`
+into `data/cifar10/`. If the download is slow, put `cifar-10-python.tar.gz`
+(md5 `c58f30108f718f92721af3b95e74349a`) there by hand and rerun the script.
+</details>
 
-CIFAR-10 is downloaded by `scripts/prepare_cifar.py` into `data/cifar10/`. If the download from the
-Toronto server is too slow, put `cifar-10-python.tar.gz` (md5 `c58f30108f718f92721af3b95e74349a`) into
-`data/cifar10/` by hand and run the script again.
+<details>
+<summary><b>Reproducing the results</b></summary>
 
-## Reproducing the results
-
-Run everything from the repo root. Set a free GPU with `CUDA_VISIBLE_DEVICES`. Queues on different GPUs
-can run in parallel. Each run writes `results/.../runs/<run_name>/` with `history.csv`, `val_preds.csv`
-and `run_info.json`; checkpoints go to `checkpoints/`.
-
-### 1. Data audit and cache (parts a, f)
+Run from the repo root. Pick free GPUs with `CUDA_VISIBLE_DEVICES`; the queues can run in parallel.
 
 ```bash
-python scripts/audit_data.py         # -> results/data_audit/ (audit.md, duplicate pairs, excluded_train.txt)
-python scripts/cache_images.py       # short side 256, JPEG q95 -> data/cache256/
-python scripts/make_data_figures.py  # sample and augmentation figures
-```
+# data audit and image cache
+python scripts/audit_data.py
+python scripts/cache_images.py
+python scripts/make_data_figures.py
 
-The 19 train images in `results/data_audit/excluded_train.txt` (near-duplicates of val/test images) are
-left out of training, so 19981 train images are used.
-
-### 2. Dogs vs. Cats experiments (parts b-f)
-
-```bash
-CUDA_VISIBLE_DEVICES=1 bash scripts/run_dogcat.sh resnet     # ResNet-50 lr sweep, fine-tune x3 seeds, no-aug run
-CUDA_VISIBLE_DEVICES=2 bash scripts/run_dogcat.sh convnext   # SimpleCNN (+ no-aug), ConvNeXt-Tiny lr sweep, x3 seeds
-CUDA_VISIBLE_DEVICES=3 bash scripts/run_dogcat.sh features   # frozen ResNet-50 / CLIP features, zero-shot, linear probes
-python scripts/hog_svm.py --workers 8                        # HOG + LinearSVC baseline (CPU)
-```
-
-A single run looks like
-`python scripts/train_dogcat.py --model convnext_tiny --run-name my_run --lr 3e-5 --epochs 10 --seed 42`.
-
-### 3. Analysis, figures and submission (parts b, d, e, f)
-
-```bash
-python scripts/analyze_dogcat.py   # comparison.csv, McNemar, TTA/ensemble selection on val, submission.csv, figures
-python scripts/plot_arch.py simplecnn final resnet50 convnext_tiny clip_vitl14   # fig_arch_*.png, arch_*.txt
+# Dogs vs. Cats
+CUDA_VISIBLE_DEVICES=1 bash scripts/run_dogcat.sh resnet     # ResNet-50 lr sweep, 3 seeds, no-aug run
+CUDA_VISIBLE_DEVICES=2 bash scripts/run_dogcat.sh convnext   # SimpleCNN, ConvNeXt-Tiny lr sweep, 3 seeds
+CUDA_VISIBLE_DEVICES=3 bash scripts/run_dogcat.sh features   # frozen ResNet-50 / CLIP features, zero-shot, probes
+python scripts/hog_svm.py --workers 8
+python scripts/analyze_dogcat.py                             # tables, McNemar, final selection, submission.csv
+python scripts/plot_arch.py simplecnn final resnet50 convnext_tiny clip_vitl14
 python scripts/gradcam.py --images test/374.jpg test/464.jpg test/47.jpg test/242.jpg --out fig_gradcam_test.png \
     --title "Grad-CAM on selected test images (class = predicted label, seed 42 checkpoints)"
 python scripts/gradcam.py --images val/dog/dog.12092.jpg val/cat/cat.7920.jpg val/dog/dog.8507.jpg \
     --out fig_gradcam_val_errors.png --title "Grad-CAM on misclassified validation images (class = predicted label)"
-```
 
-`analyze_dogcat.py` writes `results/dogcat/submission.csv`; the copy in the repo root is the file we submit.
-
-### 4. CIFAR-10 (part g)
-
-```bash
-python scripts/prepare_cifar.py                            # download, 45k/5k split (seed 42), dataset_info.md
-CUDA_VISIBLE_DEVICES=1 bash scripts/run_cifar.sh g1        # ResNet-18: lr sweep, erasing / no-aug, seeds 43, 44 of the best
-CUDA_VISIBLE_DEVICES=2 bash scripts/run_cifar.sh g2sweep   # ConvNeXt-Tiny lr sweep, 3 epochs on 15k images
-CUDA_VISIBLE_DEVICES=2 bash scripts/run_cifar.sh g2 42     # ConvNeXt-Tiny full run, repeat with 43 and 44
+# CIFAR-10
+python scripts/prepare_cifar.py
+CUDA_VISIBLE_DEVICES=1 bash scripts/run_cifar.sh g1
+CUDA_VISIBLE_DEVICES=2 bash scripts/run_cifar.sh g2sweep
+for s in 42 43 44; do CUDA_VISIBLE_DEVICES=2 bash scripts/run_cifar.sh g2 $s; done
 for s in 43 44; do python scripts/train_cifar.py --model resnet18_cifar --run-name G1_resnet18_lr0.2_s$s --lr 0.2 --seed $s; done
-python scripts/cifar_selection.py                          # val-only selection tables, G1 variant figure
-python scripts/eval_cifar.py --groups G1_resnet18_lr0.2_erase G2_convnext_tiny --split val    # check on val first
-python scripts/eval_cifar.py --groups G1_resnet18_lr0.2_erase G2_convnext_tiny                # official test set, once
+python scripts/cifar_selection.py
+python scripts/eval_cifar.py --groups G1_resnet18_lr0.2_erase G2_convnext_tiny --split val
+python scripts/eval_cifar.py --groups G1_resnet18_lr0.2_erase G2_convnext_tiny     # official test set, once
+
+# Imbalanced CIFAR-10
+for s in 42 43 44; do CUDA_VISIBLE_DEVICES=1 bash scripts/run_imbalance.sh g1 $s; done
+CUDA_VISIBLE_DEVICES=2 bash scripts/run_imbalance.sh g2 ce
+CUDA_VISIBLE_DEVICES=3 bash scripts/run_imbalance.sh g2 best
+python scripts/eval_imbalance.py --split val
+python scripts/eval_imbalance.py --split test
+
+# README figures
+python scripts/make_readme_figures.py
 ```
 
-The extra no-erasing seeds (fifth line) are only used to check the RandomErasing choice on val.
+Each run writes `results/.../runs/<run_name>/` (`history.csv`, `val_preds.csv`, `run_info.json`);
+checkpoints go to `checkpoints/`. Seeds are fixed for Python, NumPy, PyTorch and every DataLoader.
+cuDNN autotuning and AMP are on, so reruns can differ in the last digit.
+</details>
 
-### 5. Imbalanced CIFAR-10 (part h)
+<details>
+<summary><b>Hardware and run time</b></summary>
 
-```bash
-for s in 42 43 44; do CUDA_VISIBLE_DEVICES=1 bash scripts/run_imbalance.sh g1 $s; done   # 6 methods x 3 seeds
-CUDA_VISIBLE_DEVICES=2 bash scripts/run_imbalance.sh g2 ce      # ConvNeXt-Tiny with cross-entropy
-CUDA_VISIBLE_DEVICES=3 bash scripts/run_imbalance.sh g2 best    # ConvNeXt-Tiny with the best method on val (waits for g1)
-python scripts/eval_imbalance.py --split val                    # selection tables and figures on val
-python scripts/eval_imbalance.py --split test                   # official test set, once
-```
+One server with 4 × RTX 3090 (24 GB), Xeon W-2295, 251 GB RAM, shared with other jobs.
 
-## Hardware and run time
-
-One server with 4x NVIDIA RTX 3090 (24 GB), Intel Xeon W-2295 (36 threads), 251 GB RAM. The GPUs were
-shared with other jobs, so times can vary. Approximate wall-clock times per run:
-
-| experiment | time |
-|---|---|
+| experiment | time per run |
+|---|---:|
 | data audit / image cache | 11 s / 8 s |
 | SimpleCNN, 20 epochs | 4.7 min |
 | ResNet-50 fine-tune, 10 epochs | 7.5 min |
 | ConvNeXt-Tiny fine-tune, 10 epochs | 10.5 min |
-| CLIP ViT-L/14 feature extraction (all splits) | 3.5 min |
-| HOG + LinearSVC (CPU) | 2.3 min |
-| CIFAR ResNet-18, 40 epochs | 5.3 min |
-| CIFAR ConvNeXt-Tiny at 224, 8 epochs | 19.7 min |
-| imbalanced CIFAR ResNet-18 / ConvNeXt-Tiny | 3.7 min / 13 min |
+| CLIP ViT-L/14 feature extraction, all splits | 3.5 min |
+| HOG + linear SVM (CPU) | 2.3 min |
+| CIFAR-10 ResNet-18, 40 epochs | 5.3 min |
+| CIFAR-10 ConvNeXt-Tiny at 224 px, 8 epochs | 19.7 min |
+| imbalanced CIFAR-10, ResNet-18 / ConvNeXt-Tiny | 3.7 / 13 min |
 
-With three GPUs in parallel the dogs vs. cats queues take about 55 min, part g about 1.5 h and part h
-about 40 min.
+With three GPUs in parallel the whole project runs in about 3 hours.
+</details>
 
-## Reproducibility
+## Limitations
 
-- Default seed 42. `set_seed` seeds `random`, NumPy and PyTorch (CPU and CUDA), and every DataLoader gets a
-  seeded generator and `worker_init_fn`. cuDNN autotuning and AMP are on, so reruns can differ in the
-  last digits.
-- The main models are trained with seeds 42, 43 and 44 and reported as mean ± sample std: ResNet-50 and
-  ConvNeXt-Tiny (dogs vs. cats), both CIFAR-10 models, and every ResNet-18 method in part h. The other
-  runs (baselines, lr sweeps, ablations, part h ConvNeXt) use seed 42 only.
-- Optimisation uses the train split only. Learning rates, augmentation choices, the final dogs vs. cats
-  combination and the part h method are selected on val. The CIFAR-10 test set is used once at the end.
-- The CIFAR-10 val split and the imbalanced subset are fixed with seed 42 (`results/cifar/val_indices.txt`).
+- The Dogs vs. Cats test labels are not public, so all Dogs vs. Cats numbers are on validation.
+- CLIP was pretrained on 400 M web image-text pairs. Kaggle's cat and dog photos come from the web, so
+  some overlap with that corpus cannot be ruled out, and the CLIP zero-shot score may be optimistic.
+- The ensemble, the TTA choice and the imbalance method were chosen on validation from a small set of candidates. Part of the
+  last few tenths of a percent may be selection noise.
+- The imbalanced runs with ConvNeXt-Tiny used one seed and label smoothing 0.1, so they are compared with each
+  other, not with the ResNet-18 rows.
+
+## Team
+
+| name | matriculation no. | main contributions |
+|---|---|---|
+| Nguyen Ma Sinh | TODO | TODO |
+| TODO | TODO | TODO |
+| TODO | TODO | TODO |
 
 ## References
 
 1. Kaggle. Dogs vs. Cats. https://www.kaggle.com/c/dogs-vs-cats, 2013.
 2. K. He, X. Zhang, S. Ren and J. Sun. Deep residual learning for image recognition. CVPR, 2016.
 3. Z. Liu, H. Mao, C.-Y. Wu, C. Feichtenhofer, T. Darrell and S. Xie. A ConvNet for the 2020s. CVPR, 2022.
-4. A. Radford, J. W. Kim, C. Hallacy et al. Learning transferable visual models from natural language
-   supervision. ICML, 2021.
-5. A. Krizhevsky. Learning multiple layers of features from tiny images. Technical report, University of
-   Toronto, 2009.
-6. Y. Cui, M. Jia, T.-Y. Lin, Y. Song and S. Belongie. Class-balanced loss based on effective number of
-   samples. CVPR, 2019.
-7. A. K. Menon, S. Jayasumana, A. S. Rawat, H. Jain, A. Veit and S. Kumar. Long-tail learning via logit
-   adjustment. ICLR, 2021.
+4. A. Radford, J. W. Kim, C. Hallacy et al. Learning transferable visual models from natural language supervision. ICML, 2021.
+5. A. Krizhevsky. Learning multiple layers of features from tiny images. Tech. report, University of Toronto, 2009.
+6. Y. Cui, M. Jia, T.-Y. Lin, Y. Song and S. Belongie. Class-balanced loss based on effective number of samples. CVPR, 2019.
+7. A. K. Menon, S. Jayasumana, A. S. Rawat, H. Jain, A. Veit and S. Kumar. Long-tail learning via logit adjustment. ICLR, 2021.
 8. T.-Y. Lin, P. Goyal, R. Girshick, K. He and P. Dollár. Focal loss for dense object detection. ICCV, 2017.
-9. R. R. Selvaraju, M. Cogswell, A. Das, R. Vedantam, D. Parikh and D. Batra. Grad-CAM: Visual
-   explanations from deep networks via gradient-based localization. ICCV, 2017.
+9. R. R. Selvaraju, M. Cogswell, A. Das, R. Vedantam, D. Parikh and D. Batra. Grad-CAM: Visual explanations from deep networks via gradient-based localization. ICCV, 2017.
