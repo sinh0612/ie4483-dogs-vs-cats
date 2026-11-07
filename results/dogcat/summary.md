@@ -162,6 +162,11 @@ Other low-confidence test images:
 - test 47: puppies in a basket behind a wire fence, small in the frame. P(dog) = 0.80, 5/5 votes dog. By eye, dog.
 - test 242: a black cat. P(dog) = 0.12. M2a and M2c say dog (0.59, 0.67). By eye, cat.
 
+Hard cases for a scratch CNN (`scripts/hard_cases.py`, `figures/fig_hard_cases.png`): 230 val images are wrong for SimpleCNN (seed 42) but right for the final model. Six of them, picked by eye from the 30 most confident SimpleCNN errors:
+- Cat behind a wire fence (SimpleCNN P(dog) 0.96, final 0.05), small dog far away on a deck (0.15 / 0.97), kitten sitting on a stuffed Santa face (0.83 / 0.03), dark photo of a black cat (0.83 / 0.03), dog with its face hidden (0.07 / 0.97), black cat in a busy room with two children (0.84 / 0.03).
+- The scratch CNN seems to rely on global colour and texture (fur colour, background), so fences, toys, clutter and dark lighting push it to the wrong class. The pretrained models have seen many objects in many settings and pick up the animal itself even when it is small, partly hidden or next to a toy face.
+- What is still hard: the 5 errors of the final model are images with both a cat and a dog (3 cases), an extreme close-up of a paw, and one puppy held by hands. A two-class model has no way to answer "both" or "neither", so these are limits of the task as much as of the model.
+
 ## f) Effect of model and data choices (comparison chain, `mcnemar.csv`)
 
 Each step changes one thing. Accuracies are for the seed-42 runs. "Δ" is in percentage points. The McNemar test is exact (binomial on discordant images), on the same 5000 val images.
@@ -217,5 +222,5 @@ Main points:
 - b) `figures/fig_arch_simplecnn.png`, `figures/fig_arch_final.png`, `arch_*.txt`, `src/`, `scripts/`
 - c) `figures/fig_lr_sweep.png`, `lr_sweep.csv`, `runs/*/history.csv`
 - d) `comparison.csv`, `figures/fig_model_comparison.png`, `figures/fig_confusion_final.png`, `final_selection.csv`, `final_config.json`, `submission.csv`, `test_probs.csv`
-- e) `figures/fig_val_errors_final.png`, `figures/fig_test_uncertain.png`, `figures/fig_test_confident.png`, `figures/fig_gradcam_test.png`, `figures/fig_gradcam_val_errors.png`, `test_uncertain.csv`, `val_errors_final.csv`
+- e) `figures/fig_val_errors_final.png`, `figures/fig_test_uncertain.png`, `figures/fig_test_confident.png`, `figures/fig_gradcam_test.png`, `figures/fig_gradcam_val_errors.png`, `figures/fig_hard_cases.png`, `test_uncertain.csv`, `val_errors_final.csv`
 - f) `mcnemar.csv`, `comparison.csv`, `figures/fig_curves.png`, `figures/fig_curves_finetune.png`, `figures/fig_model_comparison.png`
