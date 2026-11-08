@@ -11,8 +11,6 @@ Mini project for IE4483 Artificial Intelligence and Data Mining at NTU (AY2026/2
 ![GPU](https://img.shields.io/badge/GPU-RTX%203090-76B900?logo=nvidia&logoColor=white)
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sinh0612/ie4483-dogs-vs-cats/blob/main/notebooks/demo_clip_zeroshot.ipynb)
 
-The Colab badge opens the CLIP zero-shot demo notebook. It only works while the repo is public.
-
 <p align="center">
   <img src="docs/figures/dogcat_val_errors.png" width="88%" alt="Validation errors of every Dogs vs. Cats model">
 </p>
@@ -21,12 +19,28 @@ The Colab badge opens the CLIP zero-shot demo notebook. It only works while the 
 
 - The task is binary image classification. Label convention: **1 = dog, 0 = cat**.
 - Data: 10,000 cats and 10,000 dogs for training, 2,500 of each for validation, 500 unlabeled test images.
-- Our model: a fine-tuned **ConvNeXt-Tiny**, **99.64%** validation accuracy over 3 seeds (seed 42, used for
-  `submission.csv`: 16 mistakes out of 5,000). Off-the-shelf CLIP zero-shot reaches 99.84% and is kept only for comparison.
+- Our model: a fine-tuned **ConvNeXt-Tiny** with **99.64%** validation accuracy (mean of 3 seeds). The
+  seed-42 model behind `submission.csv` makes 16 mistakes out of 5,000.
+- For comparison, the off-the-shelf CLIP model reaches 99.84% without any training on our data.
 - CIFAR-10: **98.19%** test accuracy with a pretrained ConvNeXt-Tiny, 94.28% for a ResNet-18 trained from scratch.
 - Imbalanced CIFAR-10: a logit-adjusted loss lifts recall on the rare classes by **12 points** and costs the
   common classes only 0.5.
 - Settings are chosen on the validation set only, and main models are run with 3 seeds.
+
+## Contents
+
+- [Repository layout](#repository-layout)
+- [The data](#the-data)
+- [The models](#the-models)
+- [How we picked the settings](#how-we-picked-the-settings)
+- [Results on Dogs vs. Cats](#results-on-dogs-vs-cats)
+- [Where the model goes wrong](#where-the-model-goes-wrong)
+- [What actually moves the accuracy](#what-actually-moves-the-accuracy)
+- [CIFAR-10](#cifar-10)
+- [CIFAR-10 with three rare classes](#cifar-10-with-three-rare-classes)
+- [Limitations](#limitations)
+- [Running the code](#running-the-code)
+- [References](#references)
 
 ## Repository layout
 
@@ -37,7 +51,7 @@ The Colab badge opens the CLIP zero-shot demo notebook. It only works while the 
 ├── sampleSubmission.csv           # submission format from the course
 ├── requirements.txt               # pip packages (torch is installed separately)
 ├── notebooks/
-│   └── demo_clip_zeroshot.ipynb   # try the classifier on Colab, no weights needed
+│   └── demo_clip_zeroshot.ipynb   # CLIP zero-shot demo, runs on Colab
 ├── src/                           # library code
 │   ├── utils.py                   # paths, seeding, timer, csv helpers
 │   ├── data.py                    # dataset, transforms, loaders
@@ -70,22 +84,8 @@ The Colab badge opens the CLIP zero-shot demo notebook. It only works while the 
 └── docs/figures/                  # figures used in this README
 ```
 
-The dataset, model weights and logs are not in the repo because they are too large.
-
-## Contents
-
-- [Repository layout](#repository-layout)
-- [The data](#the-data)
-- [The models](#the-models)
-- [How we picked the settings](#how-we-picked-the-settings)
-- [Results on Dogs vs. Cats](#results-on-dogs-vs-cats)
-- [Where the model goes wrong](#where-the-model-goes-wrong)
-- [What actually moves the accuracy](#what-actually-moves-the-accuracy)
-- [CIFAR-10](#cifar-10)
-- [CIFAR-10 with three rare classes](#cifar-10-with-three-rare-classes)
-- [Limitations](#limitations)
-- [Running the code](#running-the-code)
-- [References](#references)
+The dataset, model weights and logs are not tracked because of their size. See
+[Running the code](#running-the-code) for where to put the data.
 
 ## The data
 
@@ -117,10 +117,9 @@ We built the comparison as a ladder, so each step changes one thing:
 | fine-tune | ResNet-50 and ConvNeXt-Tiny | all layers |
 | bigger pretraining | CLIP ViT-L/14, zero-shot and with logistic regression | nothing / the classifier only |
 
-Our final model is the fine-tuned ConvNeXt-Tiny (seed 42), looking at the image and its mirror and
-averaging the two. CLIP is only an off-the-shelf comparison, since it never sees our training data. ConvNeXt-Tiny takes a 3 × 224 × 224 image, goes
-through four stages down to a 768 × 7 × 7 feature map, pools it to a 768-d vector and maps that to
-2 outputs. It is trained with cross-entropy (label smoothing 0.1), AdamW, one epoch of warm-up and
+Our final model is the fine-tuned ConvNeXt-Tiny. At test time it looks at each image and its mirror
+and averages the two predictions. It takes a 3 × 224 × 224 image, goes through four stages down to a
+768 × 7 × 7 feature map, pools it to a 768-d vector and maps that to 2 outputs. It is trained with cross-entropy (label smoothing 0.1), AdamW, one epoch of warm-up and
 then a cosine schedule, mixed precision, and we keep the epoch with the best validation accuracy.
 
 <p align="center">
@@ -139,9 +138,8 @@ Learning rate was the setting that mattered most, so we swept it on the validati
 Too high a rate (1e-3) wipes out part of what the backbone learned on ImageNet, and too low a rate
 learns too slowly. For ConvNeXt the two best rates tie, so we took 3e-5 because its validation loss
 was lower. Fine-tuning runs for 10 epochs, which is plenty: validation accuracy levels off after about
-5 (see the curves further down). The
-training loss flattens at about 0.2. That is not a bug: with label smoothing 0.1 and two classes the
-loss cannot go lower than 0.199.
+5 (see the curves further down). The training loss flattens at about 0.2. This is expected: with
+label smoothing 0.1 and two classes the loss cannot go lower than 0.199.
 
 ## Results on Dogs vs. Cats
 
@@ -156,12 +154,13 @@ loss cannot go lower than 0.199.
 | CLIP ViT-L/14 zero-shot, no training | 99.84% | 8 |
 | CLIP ViT-L/14 + logistic regression | 99.86% | 7 |
 
-The submitted predictions come from the seed-42 ConvNeXt-Tiny with flip TTA (99.68%, 16 mistakes; TTA
-was chosen on validation). CLIP zero-shot makes fewer mistakes, but the gap to ConvNeXt is not
-significant (McNemar p = 0.13), and CLIP was pretrained on 400 M web images that may well include
-photos like these. Averaging CLIP and ConvNeXt would give 99.90%, but we leave CLIP out of the final
-model because it was not trained on our data. On the 500 test images ConvNeXt-Tiny gives exactly the
-same labels as both CLIP models, so `submission.csv` (259 dogs, 241 cats) is the same either way.
+The test predictions in `submission.csv` (259 dogs, 241 cats) come from the seed-42 ConvNeXt-Tiny with
+flip TTA, which scores 99.68% (16 mistakes) on validation. Flip TTA was chosen on validation.
+
+CLIP makes a few fewer mistakes, but the gap is not significant (McNemar p = 0.13), and CLIP was
+pretrained on 400 M web images that may include photos like these. Averaging CLIP and ConvNeXt-Tiny
+would reach 99.90%. We keep CLIP out of the final model because the aim was a classifier trained on
+our own data. On the 500 test images both CLIP models give exactly the same labels as ConvNeXt-Tiny.
 
 ## Where the model goes wrong
 
@@ -171,7 +170,7 @@ cat or dog anyway. Curled-up kittens and animals behind cage bars are the other 
 
 On the validation set ConvNeXt-Tiny gets 16 images wrong. By eye: 4 have **both a cat and a dog** in the
 picture, 5 show a young or curled-up animal with its face hidden, 3 are black cats in dark or cropped
-photos, 2 are blurry, 1 is a line drawing and 1 is a husky-like dog. Grad-CAM on one of each main type:
+photos, 2 are blurry, 1 is a line drawing and 1 is a husky. Grad-CAM on one of each main type:
 in the top row the label is cat but the model looks at the dog; in the middle row a hand-held puppy's
 fur looks like a tabby cat; in the bottom row the center crop has cut off the black cat's head:
 
@@ -183,7 +182,7 @@ So the model is very strong on clear photos of a single animal. Its weak spots a
 animals, a tiny or hidden animal, or no animal at all, and a two-class model has no way to say
 "neither" or "both".
 
-ConvNeXt-Tiny also fixes many images that a CNN trained from scratch gets confidently wrong: a cat
+ConvNeXt-Tiny also gets right many images that a CNN trained from scratch gets confidently wrong: a cat
 behind a wire fence, a small dog far away, a kitten sitting on a stuffed toy, a black cat in a dark photo.
 The small CNN leans on color and background, while the pretrained features find the animal itself.
 
