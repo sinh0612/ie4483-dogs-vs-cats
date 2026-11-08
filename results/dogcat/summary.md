@@ -36,7 +36,7 @@ ViT-L/14 fitted in memory without problems. Feature extraction for train + val +
 
 Architecture figures and tables:
 - `figures/fig_arch_simplecnn.png` and `arch_simplecnn.txt` (output shape and params per layer).
-- `figures/fig_arch_final.png` (final ensemble).
+- `figures/fig_arch_final.png` (final model: ConvNeXt-Tiny, with tensor sizes per stage).
 - `arch_convnext_tiny.txt`, `arch_clip_vitl14.txt`, `arch_resnet50.txt`.
 
 Tensor shapes:
@@ -106,52 +106,59 @@ Notes on the table:
 - Train acc for M1/M3/M4 is measured on augmented images in train mode (dropout on), so the gap is only indicative.
 - Train times are for one run on one RTX 3090, including val evaluation every epoch. The CPU was shared with other users' jobs.
 
-### Final configuration (`final_selection.csv`, `final_config.json`)
+### Final model (`final_config.json`)
 
-Candidates: the 3 best models that output real probabilities (M5b, M5a, M4; seed-42 runs). Each candidate was tried alone and as averaged-probability ensembles of 2 and 3 models, with and without flip TTA (18 configs). Selection rule: highest val acc, ties go to lower val NLL, then fewer models.
+The final model is **M4, ConvNeXt-Tiny fine-tuned on our train split, seed 42**. The project asks for a model we train ourselves, so the CLIP models (M5a, M5b) are only an off-the-shelf comparison.
 
-- **Final = M5a (CLIP zero-shot) + M4 (ConvNeXt-Tiny, seed 42), average of P(dog), with horizontal-flip TTA.**
-  Val acc **0.9990 (5 wrong of 5000)**, val NLL 0.0286. Confusion matrix: `figures/fig_confusion_final.png`.
-- Honest caveat: the final config is better than the best single model (M5b, 0.9986) by only 2 images net. It is right on 4 images M5b gets wrong and wrong on 2 images M5b gets right. McNemar p = 0.69, so the difference is not significant. Because val was used to pick 1 config out of 18, 0.9990 is slightly optimistic as an estimate of test accuracy.
+- Flip TTA on or off was chosen on the val predictions of this run: both give val acc 0.9968 (16 wrong of 5000), and TTA has the lower val NLL (0.05578 vs 0.05593), so TTA is on.
+- Confusion matrix: `figures/fig_confusion_final.png` (8 cats called dog, 8 dogs called cat).
+- Over 3 seeds ConvNeXt-Tiny gets 0.99640 ± 0.00087 (16, 15 and 23 wrong for seeds 42, 43, 44). Seed 42 was fixed before looking at the seeds, it is not the best seed.
+- Not used: averaged-probability ensembles of the top 3 models (`final_selection.csv`, 18 configs with and without TTA). The best one, CLIP zero-shot + ConvNeXt-Tiny with flip TTA, gets 0.9990 (5 wrong). It fixes 13 ConvNeXt errors and adds 2 (McNemar p = 0.0074), but most of that gain comes from CLIP, which was never trained on our data, so we keep it as a side result only.
 - TTA per single model (seed 42, plain -> flip TTA):
   - Small gains: M5a 0.9984 -> 0.9988, M5b 0.9986 -> 0.9988, M3 0.9946 -> 0.9954.
   - No change: M4 0.9968 -> 0.9968.
   - Worse: M2c 0.9944 -> 0.9928.
   - Larger gains for the weak models: M0 +0.0058, M1 +0.0016.
-- On the 500 test images, the final labels are identical to those of M4, M5a and M5b alone, so the submission does not depend on the ensemble choice. Other models differ from the final on: M3 2 images, M2a 4, M2c 3, M1 21, M0 127.
+- On the 500 test images, ConvNeXt-Tiny gives the same labels with and without TTA, and the same labels as M5a, M5b and the ensemble above. So `submission.csv` did not change when the final model was switched from the ensemble to ConvNeXt-Tiny. Other models differ from it on: M3 2 images, M2a 4, M2c 3, M1 21, M0 127.
 - `submission.csv` (repo root and `results/dogcat/`):
   - Columns `id,label`, ids in the same order as `sampleSubmission.csv`.
   - 500 rows, labels only 0/1 (checked in the script).
   - 259 dogs, 241 cats.
-- `test_probs.csv` has P(dog) for every model (seed 42, no TTA) plus `final`.
+- `test_probs.csv` has P(dog) for every model (seed 42, no TTA) plus `final` (ConvNeXt-Tiny s42 with flip TTA).
 
 ## e) Correct and incorrect samples
 
 Test labels are not known. The judgements below come from looking at the images. No external label source was used.
 
-Validation errors of the final model (`figures/fig_val_errors_final.png`, `val_errors_final.csv`): 5 images.
-- 4 of the 5 are ambiguous or arguably mislabeled:
-  - `dog.8507`: a puppy and a kitten together. P(dog) = 0.22.
-  - `cat.9882`: a cat and a dog. P(dog) = 0.64.
-  - `cat.7920`: a black cat next to a large dog that fills most of the image. P(dog) = 0.61.
-  - `cat.10539`: an extreme close-up of a paw. P(dog) = 0.62.
-- Only `dog.12092` (a black-and-white puppy held by hands) is a clear model error. P(dog) = 0.45.
-- Grad-CAM (`figures/fig_gradcam_val_errors.png`):
-  - On `dog.8507`, ConvNeXt focuses on the kitten. On `cat.7920`, both CNNs focus on the dog's head and body. So the "errors" follow the more visible animal.
-  - On `dog.12092`, both fine-tuned CNNs are right (P(dog) 0.85 / 0.82). The ensemble is pulled below 0.5 by CLIP.
+Validation errors of ConvNeXt-Tiny s42 with flip TTA (`figures/fig_val_errors_final.png`, `val_errors_final.csv`): 16 images (8 cats, 8 dogs). Sorted by eye into types:
 
-Test images where the 5 strong models (M2a, M3, M4, M5a, M5b) disagree, or the final confidence is lowest (`figures/fig_test_uncertain.png`, `test_uncertain.csv`): only 5 of 500. The most confident ones are in `figures/fig_test_confident.png`. The maximum final P is about 0.98, because M4 was trained with label smoothing.
+| type of error | count | images |
+|---|---|---|
+| both a cat and a dog in the picture | 4 | cat.7920, cat.9882, cat.10863, dog.8507 |
+| young or curled-up animal, face hidden or unclear | 5 | dog.6489, dog.10524, dog.1568, dog.7164, cat.8198 |
+| black cat or dark photo | 3 | cat.6734, cat.5733, cat.7291 |
+| blurry or very low resolution | 2 | dog.11248, dog.990 |
+| line drawing, not a photo | 1 | cat.2939 |
+| unusual-looking breed (husky-like dog) | 1 | dog.4786 |
+
+- The most confident mistakes are the two-animal images (cat.7920 P(dog) = 0.958, cat.9882 0.937): the label names one animal but the model answers for the bigger one.
+- Grad-CAM on one image per main type (`figures/fig_gradcam_val_errors.png`, no TTA):
+  - `cat.7920`: both CNNs look at the dog's head and collar, so the "error" follows the more visible animal.
+  - `dog.10524`: a fluffy puppy held up by a hand, no face visible. ConvNeXt looks at the fur on the back, which looks like a tabby cat.
+  - `cat.6734`: a black cat walking sideways in a wide photo. After the 224 center crop the head is cut off, and ConvNeXt only sees a dark body and legs. Part of this error comes from our center-crop preprocessing.
+
+Test images where the 5 strong models (M2a, M3, M4, M5a, M5b) disagree, or ConvNeXt-Tiny's confidence is low (`figures/fig_test_uncertain.png`, `test_uncertain.csv`): 7 of 500. The most confident ones are in `figures/fig_test_confident.png`. ConvNeXt-Tiny's P(dog) stays between 0.033 and 0.971 because it was trained with label smoothing.
 
 Selected cases:
 
-1. **Correct, hard: test 374.** By eye, two or three kittens (orange/white) curled up inside a fabric cat cube. Final P(dog) = 0.182, predicted cat, which is correct.
+1. **Correct, hard: test 374.** By eye, two or three kittens (orange/white) curled up inside a fabric cat cube. ConvNeXt-Tiny P(dog) = 0.363 with TTA (0.473 without), predicted cat, which is correct.
    - The ImageNet-feature models lean towards dog: M2a 0.70, M2c 0.70.
    - The fine-tuned CNNs are less sure: M3 0.24, M4 0.47.
    - CLIP is very sure it is a cat: M5a 0.001, M5b 0.018.
    - Grad-CAM (`figures/fig_gradcam_test.png`): ResNet-50 looks at the kittens' bodies and the white paw. ConvNeXt's map is spread over the top of the cube opening.
-   - Strength shown: the model works with curled-up animals and no visible face, mainly thanks to CLIP's broad pretraining.
+   - Strength shown: ConvNeXt still gets it right with no visible face, but only just. CLIP is far more sure here.
    - Weakness shown: fur texture and colour alone (orange/white) are ambiguous for CNNs trained on 20k images.
-2. **Weakness, no correct answer: tests 464 and 328.** The same "No Photo Available" placeholder: a brown dog-shaped silhouette with text and no real animal. Final P(dog) is about 0.78, predicted dog.
+2. **Weakness, no correct answer: tests 464 and 328.** The same "No Photo Available" placeholder: a brown dog-shaped silhouette with text and no real animal. ConvNeXt-Tiny P(dog) = 0.566 with TTA, predicted dog.
    - The CNNs are close to 0.5 (M3 0.41, M4 0.52).
    - CLIP says dog with high confidence (M5a 0.99, M5b about 0.90), probably from the silhouette shape.
    - Grad-CAM: ConvNeXt spreads attention over the silhouette edges and the background. ResNet-50 looks at a small patch near the top.
@@ -159,13 +166,13 @@ Selected cases:
    - Context: the same placeholder appears in the training set labeled dog (`train/dog/dog.8898.jpg`). It was removed from training by the duplicate audit, so the models did not memorise it. A different placeholder (a "PHOTO UNAVAILABLE" cat drawing) is labeled dog in 3 train images and cat in val (`val/cat/cat.11565.jpg`; see `results/data_audit/duplicate_pairs.csv`), so the dataset labels placeholder images inconsistently.
 
 Other low-confidence test images:
-- test 47: puppies in a basket behind a wire fence, small in the frame. P(dog) = 0.80, 5/5 votes dog. By eye, dog.
-- test 242: a black cat. P(dog) = 0.12. M2a and M2c say dog (0.59, 0.67). By eye, cat.
+- test 47: puppies in a basket behind a wire fence, small in the frame. ConvNeXt P(dog) = 0.638, 5/5 votes dog. By eye, dog.
+- test 242: a black cat. ConvNeXt P(dog) = 0.240. M2a and M2c say dog (0.59, 0.67). By eye, cat.
 
-Hard cases for a scratch CNN (`scripts/hard_cases.py`, `figures/fig_hard_cases.png`): 230 val images are wrong for SimpleCNN (seed 42) but right for the final model. Six of them, picked by eye from the 30 most confident SimpleCNN errors:
-- Cat behind a wire fence (SimpleCNN P(dog) 0.96, final 0.05), small dog far away on a deck (0.15 / 0.97), kitten sitting on a stuffed Santa face (0.83 / 0.03), dark photo of a black cat (0.83 / 0.03), dog with its face hidden (0.07 / 0.97), black cat in a busy room with two children (0.84 / 0.03).
+Hard cases for a scratch CNN (`scripts/hard_cases.py`, `figures/fig_hard_cases.png`): 221 val images are wrong for SimpleCNN (seed 42) but right for ConvNeXt-Tiny (s42, flip TTA). Six of them, picked by eye from the 30 most confident SimpleCNN errors:
+- Cat behind a wire fence (SimpleCNN P(dog) 0.96, ConvNeXt-Tiny 0.08), small dog far away on a deck (0.15 / 0.96), kitten sitting on a stuffed Santa face (0.83 / 0.06), dark photo of a black cat (0.83 / 0.05), dog with its face hidden (0.07 / 0.94), black cat in a busy room with two children (0.84 / 0.05).
 - The scratch CNN seems to rely on global colour and texture (fur colour, background), so fences, toys, clutter and dark lighting push it to the wrong class. The pretrained models have seen many objects in many settings and pick up the animal itself even when it is small, partly hidden or next to a toy face.
-- What is still hard: the 5 errors of the final model are images with both a cat and a dog (3 cases), an extreme close-up of a paw, and one puppy held by hands. A two-class model has no way to answer "both" or "neither", so these are limits of the task as much as of the model.
+- What is still hard for ConvNeXt-Tiny (its 16 val errors above): two animals in one picture, young animals with the face hidden, black cats in dark or cropped photos, and blurry images. A two-class model has no way to answer "both" or "neither", so the two-animal cases are limits of the task as much as of the model.
 
 ## f) Effect of model and data choices (comparison chain, `mcnemar.csv`)
 
@@ -199,6 +206,7 @@ Main points:
   - Zero-shot already reaches 0.9984 with no training at all.
   - A linear probe adds 1 image (0.9986).
   - It is much larger (428M params) and was pretrained on 400M image-text pairs. Its advantage over fine-tuned ConvNeXt is not significant (p = 0.078). It is significant over the ResNet-50 feature models (p = 0.003-0.016).
+- Our trained model vs off-the-shelf: ConvNeXt-Tiny fine-tuned on our 19,981 train images reaches 99.64% (mean of 3 seeds), while CLIP ViT-L/14 zero-shot reaches 99.84% with no training on our data at all. The gap is 15 vs 7 discordant images for seed 42 (p = 0.13), so it is not significant. CLIP has 15x more parameters and was pretrained on 400M web image-text pairs, which very likely include cat and dog photos similar to Kaggle's (possibly some of the same images). So CLIP's score shows what large-scale pretraining can do, but it is not a fair measure of what we trained, and we do not use it for the submission.
 - Choice of linear classifier on frozen features (SVM / LogReg / linear layer) does not matter (p >= 0.29).
 - Seed variance of the fine-tuned models is 0.03-0.09 pp, smaller than the differences between some models but not all.
 
