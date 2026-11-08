@@ -21,7 +21,8 @@ The Colab badge opens the CLIP zero-shot demo notebook. It only works while the 
 
 - The task is binary image classification. Label convention: **1 = dog, 0 = cat**.
 - Data: 10,000 cats and 10,000 dogs for training, 2,500 of each for validation, 500 unlabeled test images.
-- Best result: **99.90%** validation accuracy (5 mistakes out of 5,000). The test predictions are in `submission.csv`.
+- Our model: a fine-tuned **ConvNeXt-Tiny**, **99.64%** validation accuracy over 3 seeds (seed 42, used for
+  `submission.csv`: 16 mistakes out of 5,000). Off-the-shelf CLIP zero-shot reaches 99.84% and is kept only for comparison.
 - CIFAR-10: **98.19%** test accuracy with a pretrained ConvNeXt-Tiny, 94.28% for a ResNet-18 trained from scratch.
 - Imbalanced CIFAR-10: a logit-adjusted loss lifts recall on the rare classes by **12 points** and costs the
   common classes only 0.5.
@@ -52,10 +53,10 @@ The Colab badge opens the CLIP zero-shot demo notebook. It only works while the 
 │   ├── hog_svm.py                 # HOG + linear SVM baseline
 │   ├── extract_features.py        # frozen ResNet-50 / CLIP features, CLIP zero-shot
 │   ├── probe_features.py          # logistic regression, SVM and linear layer on frozen features
-│   ├── analyze_dogcat.py          # tables, McNemar tests, final model pick, submission.csv, figures
+│   ├── analyze_dogcat.py          # tables, McNemar tests, TTA choice, submission.csv, figures
 │   ├── plot_arch.py               # architecture figures and layer shape tables
 │   ├── gradcam.py                 # Grad-CAM figures
-│   ├── hard_cases.py              # images the scratch CNN gets wrong and the final model gets right
+│   ├── hard_cases.py              # images the scratch CNN gets wrong and ConvNeXt-Tiny gets right
 │   ├── prepare_cifar.py           # downloads CIFAR-10, makes the 45k/5k split
 │   ├── train_cifar.py             # one CIFAR-10 run (also the imbalanced runs)
 │   ├── cifar_selection.py         # CIFAR-10 validation tables for choosing settings
@@ -116,8 +117,8 @@ We built the comparison as a ladder, so each step changes one thing:
 | fine-tune | ResNet-50 and ConvNeXt-Tiny | all layers |
 | bigger pretraining | CLIP ViT-L/14, zero-shot and with logistic regression | nothing / the classifier only |
 
-The final model averages two of them: CLIP zero-shot and the fine-tuned ConvNeXt-Tiny, each looking at
-the image and its mirror. ConvNeXt-Tiny is the trained part. It takes a 3 × 224 × 224 image, goes
+Our final model is the fine-tuned ConvNeXt-Tiny (seed 42), looking at the image and its mirror and
+averaging the two. CLIP is only an off-the-shelf comparison, since it never sees our training data. ConvNeXt-Tiny takes a 3 × 224 × 224 image, goes
 through four stages down to a 768 × 7 × 7 feature map, pools it to a 768-d vector and maps that to
 2 outputs. It is trained with cross-entropy (label smoothing 0.1), AdamW, one epoch of warm-up and
 then a cosine schedule, mixed precision, and we keep the epoch with the best validation accuracy.
@@ -150,26 +151,29 @@ loss cannot go lower than 0.199.
 | Small CNN from scratch | 95.22% | 239 |
 | ResNet-50 frozen + logistic regression | 99.56% | 22 |
 | ResNet-50 fine-tuned (3 seeds) | 99.45 ± 0.03% | 27 |
-| ConvNeXt-Tiny fine-tuned (3 seeds) | 99.64 ± 0.09% | 18 |
+| **ConvNeXt-Tiny fine-tuned, our final model (3 seeds)** | **99.64 ± 0.09%** | **18** |
+| *off-the-shelf, for comparison:* | | |
 | CLIP ViT-L/14 zero-shot, no training | 99.84% | 8 |
 | CLIP ViT-L/14 + logistic regression | 99.86% | 7 |
-| **Final: CLIP zero-shot + ConvNeXt-Tiny, with flip** | **99.90%** | **5** |
 
-The final model was picked on validation, so its number is slightly optimistic. It beats the best
-single model by only 2 images, and a McNemar test says that gap could be chance (p = 0.69). On the
-500 test images it gives exactly the same labels as ConvNeXt-Tiny and both CLIP models, so
-`submission.csv` (259 dogs, 241 cats) does not depend on which of them we pick.
+The submitted predictions come from the seed-42 ConvNeXt-Tiny with flip TTA (99.68%, 16 mistakes; TTA
+was chosen on validation). CLIP zero-shot makes fewer mistakes, but the gap to ConvNeXt is not
+significant (McNemar p = 0.13), and CLIP was pretrained on 400 M web images that may well include
+photos like these. Averaging CLIP and ConvNeXt would give 99.90%, but we leave CLIP out of the final
+model because it was not trained on our data. On the 500 test images ConvNeXt-Tiny gives exactly the
+same labels as both CLIP models, so `submission.csv` (259 dogs, 241 cats) is the same either way.
 
 ## Where the model goes wrong
 
-Only 5 of the 500 test images make the strong models disagree or come close to 50/50. The clearest
+Only 7 of the 500 test images make the strong models disagree or leave ConvNeXt-Tiny unsure. The clearest
 failure is the "no photo available" placeholder: there is no animal in it, but the model has to answer
 cat or dog anyway. Curled-up kittens and animals behind cage bars are the other hard cases.
 
-On the validation set, 4 of the 5 mistakes have **both a cat and a dog** in the picture, or show just a
-paw. Grad-CAM shows the model looking at the most visible animal, which is often not the one in the
-label. In the middle row the label is cat, but the dog fills most of the frame, so "dog" is a
-reasonable answer:
+On the validation set ConvNeXt-Tiny gets 16 images wrong. By eye: 4 have **both a cat and a dog** in the
+picture, 5 show a young or curled-up animal with its face hidden, 3 are black cats in dark or cropped
+photos, 2 are blurry, 1 is a line drawing and 1 is a husky-like dog. Grad-CAM on one of each main type:
+in the top row the label is cat but the model looks at the dog; in the middle row a hand-held puppy's
+fur looks like a tabby cat; in the bottom row the center crop has cut off the black cat's head:
 
 <p align="center">
   <img src="results/dogcat/figures/fig_gradcam_val_errors.png" width="62%" alt="Grad-CAM on misclassified validation images">
@@ -179,7 +183,7 @@ So the model is very strong on clear photos of a single animal. Its weak spots a
 animals, a tiny or hidden animal, or no animal at all, and a two-class model has no way to say
 "neither" or "both".
 
-The pretrained models also fix many images that a CNN trained from scratch gets confidently wrong: a cat
+ConvNeXt-Tiny also fixes many images that a CNN trained from scratch gets confidently wrong: a cat
 behind a wire fence, a small dog far away, a kitten sitting on a stuffed toy, a black cat in a dark photo.
 The small CNN leans on color and background, while the pretrained features find the animal itself.
 
@@ -275,8 +279,10 @@ accuracy. Every method uses the same ResNet-18 recipe and 3 seeds.
 - The Dogs vs. Cats test labels are not public, so all Dogs vs. Cats numbers are validation numbers.
 - CLIP was pretrained on 400 million web images. The Kaggle photos also come from the web, so some
   overlap is possible and the zero-shot score may be a bit optimistic.
-- The final ensemble and the imbalance method were chosen on validation from a handful of options, so
+- The TTA setting and the imbalance method were chosen on validation from a handful of options, so
   the last few tenths of a percent may partly be selection luck.
+- Validation and test images are center-cropped to 224 × 224, which can cut off the head of an animal in
+  a wide photo. At least one ConvNeXt validation error comes from this.
 - The ConvNeXt-Tiny imbalance runs use one seed and label smoothing, so we compare them with each other,
   not with the ResNet-18 rows.
 
@@ -325,12 +331,12 @@ CUDA_VISIBLE_DEVICES=1 bash scripts/run_dogcat.sh resnet     # ResNet-50 lr swee
 CUDA_VISIBLE_DEVICES=2 bash scripts/run_dogcat.sh convnext   # SimpleCNN, ConvNeXt-Tiny lr sweep, 3 seeds
 CUDA_VISIBLE_DEVICES=3 bash scripts/run_dogcat.sh features   # frozen ResNet-50 / CLIP features, zero-shot, probes
 python scripts/hog_svm.py --workers 8
-python scripts/analyze_dogcat.py                             # tables, McNemar, final pick, submission.csv
+python scripts/analyze_dogcat.py                             # tables, McNemar, ConvNeXt TTA choice, submission.csv
 python scripts/plot_arch.py simplecnn final resnet50 convnext_tiny clip_vitl14
 python scripts/gradcam.py --images test/374.jpg test/464.jpg test/47.jpg test/242.jpg --out fig_gradcam_test.png \
     --title "Grad-CAM on selected test images (class = predicted label, seed 42 checkpoints)"
-python scripts/gradcam.py --images val/dog/dog.12092.jpg val/cat/cat.7920.jpg val/dog/dog.8507.jpg \
-    --out fig_gradcam_val_errors.png --title "Grad-CAM on misclassified validation images (class = predicted label)"
+python scripts/gradcam.py --images val/cat/cat.7920.jpg val/dog/dog.10524.jpg val/cat/cat.6734.jpg \
+    --out fig_gradcam_val_errors.png --title "Grad-CAM on validation images misclassified by ConvNeXt-Tiny (class = predicted label)"
 python scripts/hard_cases.py
 
 # CIFAR-10
