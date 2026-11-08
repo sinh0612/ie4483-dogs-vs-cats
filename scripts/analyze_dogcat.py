@@ -39,6 +39,7 @@ GROUPS = {
     "M5b_clip_vitl14_logreg": "CLIP ViT-L/14 frozen features + LogisticRegression",
 }
 # models whose prob_dog is a real probability (SVM scores are not), usable for ensembles
+FINAL = "M4_convnext_tiny_ft"
 PROB_OK = {"M1_simplecnn", "M1_simplecnn_noaug", "M2a_resnet50_logreg", "M2c_resnet50_linear",
            "M3_resnet50_ft", "M3_resnet50_ft_noaug", "M4_convnext_tiny_ft", "M5a_clip_vitl14_zeroshot",
            "M5b_clip_vitl14_logreg"}
@@ -159,38 +160,45 @@ def main():
     mc.to_csv(os.path.join(DOGCAT_RESULTS, "mcnemar.csv"), index=False)
     print(mc[["comparison", "model_a", "model_b", "delta_b_minus_a", "p_value"]].to_string(index=False))
 
-    # final config: single best / +TTA / ensembles of top 2-3 (seed 42 runs), chosen on val only
+    # final model: ConvNeXt-Tiny seed 42, trained on our data. Flip TTA on/off is chosen on its own val
+    # predictions (higher val acc, ties -> lower val NLL)
+    v = runs[FINAL][42]["val"]
+    opts = [(tta, float(((v[c] > 0.5) == labels).mean()), nll(v[c].values, labels))
+            for tta, c in ((False, "prob_dog"), (True, "prob_dog_tta"))]
+    tta, final_acc, final_nll = sorted(opts, key=lambda o: (-o[1], o[2]))[0]
+    col = "prob_dog_tta" if tta else "prob_dog"
+    p_val_final = v[col].values
+    p_test_final = runs[FINAL][42]["test"][col].values
+    print(f"FINAL: {FINAL} s42 tta={tta} val_acc={final_acc} (options: {opts})")
+
+    # side analysis only: ensembles of the top 3 models. Not used for the submission, because the best ones
+    # include CLIP, which was never trained on our data.
     cands = [g for g in comp.sort_values("val_acc_mean", ascending=False).model if g in PROB_OK][:3]
     configs = []
     for k in (1, 2, 3):
         for members in combinations(cands, k):
-            for tta in (False, True):
-                col = "prob_dog_tta" if tta else "prob_dog"
-                p = np.mean([runs[g][42]["val"][col].values for g in members], axis=0)
-                configs.append(dict(members="+".join(members), n_models=k, tta=tta,
+            for t in (False, True):
+                c = "prob_dog_tta" if t else "prob_dog"
+                p = np.mean([runs[g][42]["val"][c].values for g in members], axis=0)
+                configs.append(dict(members="+".join(members), n_models=k, tta=t,
                                     val_acc=round(float(((p > 0.5) == labels).mean()), 5),
                                     val_nll=round(nll(p, labels), 5), n_wrong=int(((p > 0.5) != labels).sum())))
-    sel = pd.DataFrame(configs)
-    # highest val acc; ties -> lower val NLL; then fewer models
-    sel = sel.sort_values(["val_acc", "val_nll", "n_models"], ascending=[False, True, True]).reset_index(drop=True)
+    sel = pd.DataFrame(configs).sort_values(["val_acc", "val_nll", "n_models"], ascending=[False, True, True])
     sel.to_csv(os.path.join(DOGCAT_RESULTS, "final_selection.csv"), index=False)
-    final = sel.iloc[0]
-    print(sel.head(10).to_string(index=False))
-    print(f"FINAL: {final.members} tta={final.tta} val_acc={final.val_acc}")
-    members, col = final.members.split("+"), "prob_dog_tta" if final.tta else "prob_dog"
-    p_val_final = np.mean([runs[g][42]["val"][col].values for g in members], axis=0)
-    p_test_final = np.mean([runs[g][42]["test"][col].values for g in members], axis=0)
-    # is the final config really better than the best single model without TTA?
-    best_single = comp.sort_values("val_acc_s42", ascending=False).model.iloc[0]
-    n01, n10, p_mc = mcnemar(correct_vec(runs, best_single), (p_val_final > 0.5) == labels)
-    print(f"final vs {best_single}: final wins {n10}, single wins {n01}, McNemar p={p_mc:.4g}")
+    ens = sel.iloc[0]
+    c = "prob_dog_tta" if ens.tta else "prob_dog"
+    p_ens = np.mean([runs[g][42]["val"][c].values for g in ens.members.split("+")], axis=0)
+    n01, n10, p_mc = mcnemar((p_val_final > 0.5) == labels, (p_ens > 0.5) == labels)
+    print(f"best ensemble (not used): {ens.members} tta={ens.tta} val_acc={ens.val_acc}, McNemar vs final p={p_mc:.4g}")
     with open(os.path.join(DOGCAT_RESULTS, "final_config.json"), "w") as f:
-        json.dump(dict(members=members, seed=42, tta=bool(final.tta), val_acc=float(final.val_acc),
-                       val_nll=float(final.val_nll), n_wrong=int(final.n_wrong),
-                       vs_best_single=dict(model=best_single, final_right_single_wrong=n10,
-                                           final_wrong_single_right=n01, mcnemar_p=float(f"{p_mc:.4g}")),
-                       rule="max val acc, ties -> lower val NLL, then fewer models; candidates = top-3 models "
-                            "with real probabilities, seed 42 runs"), f, indent=2)
+        json.dump(dict(members=[FINAL], seed=42, tta=bool(tta), val_acc=round(final_acc, 5),
+                       val_nll=round(final_nll, 5), n_wrong=int(((p_val_final > 0.5) != labels).sum()),
+                       rule="final = ConvNeXt-Tiny seed 42 (our trained model); TTA chosen on val acc, ties -> lower NLL",
+                       ensemble_not_used=dict(members=ens.members.split("+"), tta=bool(ens.tta),
+                                              val_acc=float(ens.val_acc), n_wrong=int(ens.n_wrong),
+                                              ensemble_right_final_wrong=n10, ensemble_wrong_final_right=n01,
+                                              mcnemar_p=float(f"{p_mc:.4g}"),
+                                              why="contains CLIP, which was not trained on our data")), f, indent=2)
 
     # test probabilities + submission
     test_ids = runs["M0_hog_svm"][42]["test"].id.values
@@ -208,11 +216,11 @@ def main():
     shutil.copy(os.path.join(DOGCAT_RESULTS, "submission.csv"), os.path.join(PROJECT_ROOT, "submission.csv"))
     print(f"submission: {len(sub)} rows, dogs={sub.label.sum()}, cats={(sub.label == 0).sum()}")
 
-    make_figures(runs, comp, labels, val_paths, p_val_final, final, tp)
+    make_figures(runs, comp, labels, val_paths, p_val_final, tp)
     print(f"Total time: {timer}")
 
 
-def make_figures(runs, comp, labels, val_paths, p_val_final, final, tp):
+def make_figures(runs, comp, labels, val_paths, p_val_final, tp):
     # learning curves: rows = loss / accuracy, one column per model family; dashed = train, solid = val
     panels = [("SimpleCNN from scratch", [("M1_simplecnn", 42, "with augmentation"),
                                           ("M1_simplecnn_noaug", 42, "no augmentation")]),
@@ -323,7 +331,7 @@ def make_figures(runs, comp, labels, val_paths, p_val_final, final, tp):
         plt.savefig(os.path.join(FIG, "fig_lr_sweep.png"), dpi=200)
         plt.close(fig)
 
-    # confusion matrix of the final config on val
+    # confusion matrix of the final model on val
     pred = (p_val_final > 0.5).astype(int)
     cm = confusion_matrix(labels, pred)
     fig, ax = plt.subplots(figsize=(5.2, 4.6))
@@ -335,12 +343,12 @@ def make_figures(runs, comp, labels, val_paths, p_val_final, final, tp):
     ax.set_xticks([0, 1], ["cat (0)", "dog (1)"])
     ax.set_yticks([0, 1], ["cat (0)", "dog (1)"])
     ax.set(xlabel="predicted", ylabel="true label",
-           title=f"Final model on val (acc {(pred == labels).mean():.4f})")
+           title=f"ConvNeXt-Tiny (seed 42) on val (acc {(pred == labels).mean():.4f})")
     plt.tight_layout()
     plt.savefig(os.path.join(FIG, "fig_confusion_final.png"), dpi=200)
     plt.close(fig)
 
-    # misclassified val images of the final config
+    # misclassified val images of the final model
     wrong = np.nonzero(pred != labels)[0]
     wrong = wrong[np.argsort(-np.abs(p_val_final[wrong] - 0.5))]  # most confident mistakes first
     pd.DataFrame({"path": val_paths[wrong], "label": labels[wrong], "prob_dog_final": p_val_final[wrong].round(4)}) \
@@ -348,7 +356,7 @@ def make_figures(runs, comp, labels, val_paths, p_val_final, final, tp):
     image_grid([val_paths[i] for i in wrong],
                [f"{os.path.basename(val_paths[i])}\ntrue {'dog' if labels[i] else 'cat'}, P(dog)={p_val_final[i]:.3f}"
                 for i in wrong], os.path.join(FIG, "fig_val_errors_final.png"),
-               "Validation images misclassified by the final model")
+               "Validation images misclassified by ConvNeXt-Tiny (seed 42, flip TTA)")
 
     # test: disagreement between strong models and low confidence of the final model
     strong = [g for g in ["M2a_resnet50_logreg", "M3_resnet50_ft", "M4_convnext_tiny_ft",
@@ -360,8 +368,8 @@ def make_figures(runs, comp, labels, val_paths, p_val_final, final, tp):
     hard = tp[tp.disagree | (tp.confidence < 0.8)].sort_values("confidence")
     easy = tp.sort_values("confidence", ascending=False).head(6)
     for d, name, title in [(hard, "fig_test_uncertain.png",
-                            f"Test images where models disagree ({len(strong)} strong models) or final confidence is low"),
-                           (easy, "fig_test_confident.png", "Test images with the highest final confidence")]:
+                            f"Test images where models disagree ({len(strong)} strong models) or ConvNeXt-Tiny confidence is low"),
+                           (easy, "fig_test_confident.png", "Test images with the highest ConvNeXt-Tiny confidence")]:
         image_grid([f"test/{i}.jpg" for i in d.id],
                    [f"test {i}: P(dog)={p:.3f}\ndog votes {v}/{len(strong)}" for i, p, v in zip(d.id, d.final, d.n_dog_votes)],
                    os.path.join(FIG, name), title)
