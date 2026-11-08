@@ -18,6 +18,7 @@ from src.models import build_model, gradcam_layer
 from src.utils import CACHE_ROOT, DOGCAT_RESULTS, PROJECT_ROOT, Timer
 
 MODELS = [("resnet50", "M3_resnet50_ft_s42"), ("convnext_tiny", "M4_convnext_tiny_ft_s42")]
+NAMES = {"resnet50": "ResNet-50", "convnext_tiny": "ConvNeXt-Tiny"}
 
 
 class GradCAM:
@@ -76,7 +77,7 @@ def main():
             cam, prob, pred = cams[(arch, p)]
             ax.imshow(img)
             ax.imshow(cam, cmap="jet", alpha=0.45)
-            ax.set_title(f"{arch}: pred {'dog' if pred else 'cat'}, P(dog)={prob[1]:.3f}", fontsize=10)
+            ax.set_title(f"{NAMES[arch]}: pred {'dog' if pred else 'cat'}, P(dog)={prob[1]:.3f}", fontsize=10)
         for ax in row:
             ax.axis("off")
     fig.suptitle(args.title, fontsize=13)

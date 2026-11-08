@@ -42,6 +42,8 @@ plt.rcParams.update({
 
 N_VAL = 5000
 
+OTS = "Off-the-shelf (no training on our data)"
+
 # display name, family
 DOGCAT = {
     "M0_hog_svm": ("HOG + linear SVM", "Baselines"),
@@ -52,15 +54,15 @@ DOGCAT = {
     "M2a_resnet50_logreg": ("ResNet-50 features + log. regression", "Frozen ImageNet features"),
     "M3_resnet50_ft_noaug": ("ResNet-50 fine-tuned, no augmentation", "Fine-tuned"),
     "M3_resnet50_ft": ("ResNet-50 fine-tuned", "Fine-tuned"),
-    "M4_convnext_tiny_ft": ("ConvNeXt-Tiny fine-tuned", "Fine-tuned"),
-    "M5a_clip_vitl14_zeroshot": ("CLIP ViT-L/14 zero-shot", "CLIP"),
-    "M5b_clip_vitl14_logreg": ("CLIP ViT-L/14 features + log. regression", "CLIP"),
+    "M4_convnext_tiny_ft": ("ConvNeXt-Tiny fine-tuned (our model)", "Final (submitted)"),
+    "M5a_clip_vitl14_zeroshot": ("CLIP ViT-L/14 zero-shot", OTS),
+    "M5b_clip_vitl14_logreg": ("CLIP ViT-L/14 features + log. regression", OTS),
 }
 FAMILY_COLOR = {
     "Baselines": MUTED,
     "Frozen ImageNet features": BLUE,
     "Fine-tuned": ORANGE,
-    "CLIP": AQUA,
+    OTS: AQUA,
     "Final (submitted)": INK,
 }
 
@@ -85,7 +87,6 @@ def err_interval(n_wrong, n=N_VAL, reps=20000, seed=0):
 
 def dogcat_figure(root, out):
     df = pd.read_csv(root / "results/dogcat/comparison.csv")
-    final = json.loads((root / "results/dogcat/final_config.json").read_text())
 
     rows = []
     for _, r in df.iterrows():
@@ -97,12 +98,7 @@ def dogcat_figure(root, out):
         label = name + (f"  ({len(seeds)} seeds)" if len(seeds) > 1 else "")
         rows.append(dict(name=label, fam=fam, mean=np.mean(wrong), seeds=wrong,
                          ci=err_interval(round(np.mean(wrong)))))
-    members = " + ".join(DOGCAT[m][0].replace(" fine-tuned", "").replace("CLIP ViT-L/14 ", "CLIP ")
-                         for m in final["members"])
-    rows.append(dict(name=f"Ensemble: {members}" + (", flip TTA" if final["tta"] else ""),
-                     fam="Final (submitted)", mean=final["n_wrong"], seeds=[final["n_wrong"]],
-                     ci=err_interval(final["n_wrong"])))
-    rows.sort(key=lambda d: d["mean"])
+    rows.sort(key=lambda d: (d["fam"] != "Final (submitted)", d["mean"]))  # list is drawn bottom-up: our model last row
 
     fig, ax = plt.subplots(figsize=(9.5, 5.6))
     y = np.arange(len(rows))
